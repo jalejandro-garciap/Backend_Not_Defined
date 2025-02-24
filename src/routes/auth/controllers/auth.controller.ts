@@ -8,7 +8,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { SocialMedia, User } from '@prisma/client';
 import { AuthenticatedGuard, TiktokAuthGuard } from '../guards/AuthGuard';
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
@@ -32,7 +32,10 @@ export class AuthController {
 
   @Get('status')
   @UseGuards(AuthenticatedGuard)
-  status(@AuthUser() user: User, @Res() res: Response) {
+  status(
+    @AuthUser() user: User & { social_medias: SocialMedia[] },
+    @Res() res: Response,
+  ) {
     res.send(user);
   }
 
