@@ -11,7 +11,7 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
       clientID: process.env.TIKTOK_CLIENT_ID,
       clientSecret: process.env.TIKTOK_CLIENT_SECRET,
       callbackURL: process.env.TIKTOK_CALLBACK_URL,
-      scope: ['user.info.basic', 'user.info.profile', 'video.list'],
+      scope: ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list'],
     });
   }
 

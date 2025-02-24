@@ -19,6 +19,8 @@ export class TiktokController {
       throw new Error('No TikTok account connected');
     }
 
-    return this.tiktokService.getTiktokVideos(accessToken);
+    const cursor = 0;
+
+    return this.tiktokService.getTiktokVideos(accessToken, cursor);
   }
 }
