@@ -28,7 +28,7 @@ model User {
 model SocialMedia {
   id                String   @id @default(cuid())
   user_id           String
-  social_media_name String   @unique
+  social_media_name String
   access_token      String
   refresh_token     String
   last_connection   DateTime @default(now())

@@ -5,6 +5,7 @@ import { PrismaModule } from './routes/prisma/prisma.module';
 import { UserModule } from './routes/user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './routes/auth/auth.module';
+import { TiktokModule } from './routes/tiktok/tiktok.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthModule } from './routes/auth/auth.module';
     PrismaModule,
     AuthModule,
     UserModule,
+    TiktokModule,
   ],
   controllers: [AppController],
   providers: [AppService],

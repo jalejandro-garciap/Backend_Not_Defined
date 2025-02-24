@@ -11,7 +11,6 @@ export class UserService {
   async createUser(details: SocialMediaLogin): Promise<User> {
     return this.prisma.user.create({
       data: {
-        id: details.id,
         email: details.email,
         username: details.username,
         profile_image: details.img,
@@ -19,6 +18,7 @@ export class UserService {
         phone: '',
         social_medias: {
           create: {
+            id: details.id,
             social_media_name: details.social_media_name,
             access_token: details.accessToken,
             refresh_token: details.refreshToken,
@@ -39,6 +39,18 @@ export class UserService {
     });
   }
 
+  async getUserBySocialMediaId(socialMediaId: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        social_medias: {
+          some: {
+            id: socialMediaId,
+          },
+        },
+      },
+    });
+  }
+
   updateUser(user: User, details: SocialMediaLogin) {
     return this.prisma.user.update({
       where: {
@@ -50,7 +62,7 @@ export class UserService {
         social_medias: {
           upsert: {
             where: {
-              social_media_name: details.social_media_name,
+              id: details.id,
             },
             update: {
               access_token: details.accessToken,

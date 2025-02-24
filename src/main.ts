@@ -9,10 +9,10 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaSessionStore } from '@quixo3/prisma-session-store';
 
 async function bootstrap() {
-  const httpsOptions = {
-    key: fs.readFileSync('./src/key.pem'),
-    cert: fs.readFileSync('./src/cert.pem'),
-  };
+  // const httpsOptions = {
+  //   key: fs.readFileSync('./src/key.pem'),
+  //   cert: fs.readFileSync('./src/cert.pem'),
+  // };
 
   const app = await NestFactory.create(AppModule, {});
 
