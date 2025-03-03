@@ -1,12 +1,17 @@
 import { HttpService } from '@nestjs/axios';
-import { Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { TikTokVideoListResponse } from '../utils/interfaces/tiktok_video_list_response.interface';
 import { catchError, firstValueFrom } from 'rxjs';
 import { TikTokVideo } from '../utils/interfaces/tiktok_video.interface';
+import { ReportService } from 'src/reports/services/report.service';
 
 @Injectable()
 export class TiktokService {
-  constructor(@Inject() private readonly httpService: HttpService) {}
+  constructor(
+    @Inject() private readonly httpService: HttpService,
+    @Inject(forwardRef(() => ReportService))
+    private readonly reportService: ReportService,
+  ) {}
 
   async getTiktokVideos(
     accessToken: string,
@@ -38,5 +43,12 @@ export class TiktokService {
         ),
     );
     return data.data.videos;
+  }
+
+  async generateTikTokReport(
+    accessToken: string,
+    cursor: number,
+  ): Promise<Buffer> {
+    return this.reportService.generateTikTokReport(accessToken, cursor);
   }
 }

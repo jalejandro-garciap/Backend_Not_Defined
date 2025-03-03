@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
 import { SocialMediaLogin } from '../types/user.types';
-import { PrismaService } from 'src/routes/prisma/prisma.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { User } from '@prisma/client';
 
 @Injectable()
