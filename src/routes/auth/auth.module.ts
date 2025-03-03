@@ -3,7 +3,7 @@ import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { SessionSerializer } from './utils/SessionSerializer';
 import { UserService } from '../user/services/user.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { TikTokStrategy } from './strategies/TikTokStrategy';
 
 @Module({
