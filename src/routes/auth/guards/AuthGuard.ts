@@ -12,6 +12,26 @@ export class TiktokAuthGuard extends AuthGuard('tiktok') {
 }
 
 @Injectable()
+export class InstagramAuthGuard extends AuthGuard('instagram') {
+  async canActivate(context: ExecutionContext) {
+    const activate = (await super.canActivate(context)) as boolean;
+    const request = context.switchToHttp().getRequest();
+    await super.logIn(request);
+    return activate;
+  }
+}
+
+@Injectable()
+export class YouTubeAuthGuard extends AuthGuard('youtube') {
+  async canActivate(context: ExecutionContext) {
+    const activate = (await super.canActivate(context)) as boolean;
+    const request = context.switchToHttp().getRequest();
+    await super.logIn(request);
+    return activate;
+  }
+}
+
+@Injectable()
 export class AuthenticatedGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();

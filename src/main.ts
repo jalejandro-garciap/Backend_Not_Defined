@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import * as fs from 'fs';
 import * as cookieParser from 'cookie-parser';
 import * as session from 'express-session';
 import * as passport from 'passport';
@@ -9,11 +8,6 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaSessionStore } from '@quixo3/prisma-session-store';
 
 async function bootstrap() {
-  // const httpsOptions = {
-  //   key: fs.readFileSync('./src/key.pem'),
-  //   cert: fs.readFileSync('./src/cert.pem'),
-  // };
-
   const app = await NestFactory.create(AppModule, {});
 
   app.setGlobalPrefix('/api');
@@ -37,7 +31,7 @@ async function bootstrap() {
       },
       store: new PrismaSessionStore(new PrismaClient(), {
         checkPeriod: 2 * 60 * 1000,
-        dbRecordIdIsSessionId: undefined,
+        dbRecordIdIsSessionId: true,
         dbRecordIdFunction: undefined,
       }),
     }),
