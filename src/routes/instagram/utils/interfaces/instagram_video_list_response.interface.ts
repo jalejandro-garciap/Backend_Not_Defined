@@ -1,7 +1,7 @@
-import { InstagramMedia } from './instagram_video.interface';
+import { InstagramMetrics } from './instagram_metrics.interface';
 
 export interface InstagramMediaListResponse {
-  data: InstagramMedia[];
+  data: InstagramMetrics[];
   paging: {
     cursors: {
       before: string;

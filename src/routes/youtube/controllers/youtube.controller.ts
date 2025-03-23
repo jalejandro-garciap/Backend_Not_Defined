@@ -9,7 +9,7 @@ import { Response } from 'express';
 export class YoutubeController {
   constructor(@Inject() private readonly youtubeService: YoutubeService) {}
 
-  @Get('videos')
+  @Get('posts-metrics')
   @UseGuards(AuthenticatedGuard)
   async getYoutubeVideos(@AuthUser() user: User & { social_medias: SocialMedia[] }) {
     const accessToken = user.social_medias.find(
@@ -22,7 +22,7 @@ export class YoutubeController {
 
     const pageToken = '';
 
-    return this.youtubeService.getYoutubeVideos(accessToken, pageToken);
+    return this.youtubeService.getAllVideoMetrics(accessToken, pageToken);
   }
 
   @Get('report')
