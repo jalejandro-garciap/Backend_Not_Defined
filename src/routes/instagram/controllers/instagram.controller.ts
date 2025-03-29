@@ -12,8 +12,8 @@ import { Response } from 'express';
 import { ReportFormat } from 'src/reports/interfaces/report-data.interfaces';
 import { MultiUserReportService } from 'src/reports/services/multi-user-report.service';
 
-@Controller('tiktok')
-export class TiktokController {
+@Controller('instagram')
+export class InstagramController {
   constructor(
     @Inject() private readonly multiUserReportService: MultiUserReportService,
   ) {}
@@ -58,7 +58,7 @@ export class TiktokController {
       }
 
       const buffer =
-        await this.multiUserReportService.generateMultiUserTikTokReport(
+        await this.multiUserReportService.generateMultiUserInstagramReport(
           dto.userIds,
           reportFormat,
           startDate,

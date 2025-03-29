@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './routes/auth/auth.module';
 import { TiktokModule } from './routes/tiktok/tiktok.module';
 import { ReportModule } from './reports/reports.module';
+import { InstagramModule } from './routes/instagram/instagram.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ReportModule } from './reports/reports.module';
     UserModule,
     TiktokModule,
     ReportModule,
+    InstagramModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SocialMedia, User } from '@prisma/client';
-import { AuthenticatedGuard, TiktokAuthGuard } from '../guards/AuthGuard';
+import { AuthenticatedGuard, InstagramAuthGuard, TiktokAuthGuard } from '../guards/AuthGuard';
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
 import { AuthUser } from 'src/utils/decorators';
@@ -27,6 +27,18 @@ export class AuthController {
   @Get('redirect/tiktok')
   @UseGuards(TiktokAuthGuard)
   redirectG(@Res() res: Response) {
+    res.redirect(process.env.FRONTEND_URL);
+  }
+
+  @Get('login/instagram')
+  @UseGuards(InstagramAuthGuard)
+  async instagramAuth() {
+    return 'login';
+  }
+
+  @Get('redirect/instagram')
+  @UseGuards(InstagramAuthGuard)
+  async instagramAuthCallback(@Res() res) {
     res.redirect(process.env.FRONTEND_URL);
   }
 
