@@ -29,15 +29,16 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
   ) {
     refreshToken = refreshToken || 'no-refresh-token';
     try {
-      const user = await this.authService.validateUser({
-        id: profile.id,
-        social_media_name: 'instagram',
-        username: profile.username,
-        img: profile.profileImage,
-        email: null,
-        accessToken,
-        refreshToken,
-      });
+      const user = await this.authService.validateSocialMedia({
+          id: profile.id,
+          social_media_name: 'instagram',
+          username: profile.username,
+          img: profile.profileImage,
+          email: null,
+          accessToken,
+          refreshToken,
+        },
+      );
       done(null, user);
     } catch (err) {
       done(err, false);

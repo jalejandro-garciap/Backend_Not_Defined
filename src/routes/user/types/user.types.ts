@@ -1,9 +1,10 @@
-export type SocialMediaLogin = {
+export type UserLogin = {
   id: string;
+  firstname: string; 
+  lastname: string;
   username: string;
   img: string;
-  email: string | null;
+  email: string;
   accessToken: string;
   refreshToken: string;
-  social_media_name: string;
 };

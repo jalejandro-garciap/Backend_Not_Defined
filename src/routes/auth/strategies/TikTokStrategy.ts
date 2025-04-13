@@ -20,14 +20,15 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
     refreshToken: string,
     profile: TiktokProfile,
   ) {
-    return this.authService.validateUser({
-      id: profile.id,
-      social_media_name: 'tiktok',
-      username: profile.username,
-      img: profile.profileImage,
-      email: null,
-      accessToken,
-      refreshToken,
-    });
+    return this.authService.validateSocialMedia({
+        id: profile.id,
+        social_media_name: 'tiktok',
+        username: profile.username,
+        img: profile.profileImage,
+        email: null,
+        accessToken,
+        refreshToken,
+      },
+    );
   }
 }
