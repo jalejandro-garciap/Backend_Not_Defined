@@ -9,6 +9,10 @@ import { Social } from '../types/social.types';
 export class UserService {
   constructor(@Inject() private readonly prisma: PrismaService) {}
 
+  async getAllUsers() {
+    return this.prisma.user.findMany();
+  }  
+
   async createUser(details: UserLogin): Promise<User> {
     return this.prisma.user.create({
       data: {
@@ -61,6 +65,23 @@ export class UserService {
         role: 'STREAMER',
         phone: '',
       },
+    });
+  }
+
+  async getUserById(userId: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        social_medias: true,
+      },
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return this.prisma.user.delete({
+      where: { id: userId },
     });
   }
 

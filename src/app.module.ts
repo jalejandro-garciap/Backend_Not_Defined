@@ -8,6 +8,7 @@ import { AuthModule } from './routes/auth/auth.module';
 import { TiktokModule } from './routes/tiktok/tiktok.module';
 import { ReportModule } from './reports/reports.module';
 import { InstagramModule } from './routes/instagram/instagram.module';
+import { RequestModule } from './routes/request/request.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { InstagramModule } from './routes/instagram/instagram.module';
     TiktokModule,
     ReportModule,
     InstagramModule,
+    RequestModule,
   ],
   controllers: [AppController],
   providers: [AppService],
