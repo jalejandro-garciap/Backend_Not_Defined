@@ -11,16 +11,24 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
       clientID: process.env.TIKTOK_CLIENT_ID,
       clientSecret: process.env.TIKTOK_CLIENT_SECRET,
       callbackURL: process.env.TIKTOK_CALLBACK_URL,
-      scope: ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list'],
+      passReqToCallback: true,
+      scope: [
+        'user.info.basic',
+        'user.info.profile',
+        'user.info.stats',
+        'video.list',
+      ],
     });
   }
 
   async validate(
+    req: any,
     accessToken: string,
     refreshToken: string,
     profile: TiktokProfile,
   ) {
-    return this.authService.validateSocialMedia({
+    await this.authService.validateSocialMedia(
+      {
         id: profile.id,
         social_media_name: 'tiktok',
         username: profile.username,
@@ -29,6 +37,18 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
         accessToken,
         refreshToken,
       },
+      req,
     );
+
+    if (!req.session.socialConnections) {
+      req.session.socialConnections = {};
+    }
+
+    req.session.socialConnections['tiktok'] = {
+      id: profile.id,
+      username: profile.username,
+    };
+
+    return { provider: 'tiktok', id: profile.id, socialConnection: true };
   }
 }

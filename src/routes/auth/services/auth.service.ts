@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { UserService } from 'src/routes/user/services/user.service';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -21,19 +22,26 @@ export class AuthService {
       });
     }
   }
-  async validateSocialMedia(profile: any): Promise<any> {
+
+  async validateSocialMedia(profile: any, req: Request): Promise<any> {
     const social_media = await this.userService.getSocialMediaById(profile.id);
-    
+
     if (!social_media) {
-      return this.userService.addSocialMediaToUser({
-              id: profile.id,
-              social_media_name: profile.social_media_name,
-              accessToken: profile.accessToken,
-              refreshToken: profile.refreshToken,
-              username: profile.username,
-              img: profile.img,
-              email: profile.email,
-            });
+      const sessionCookie = req.cookies['connect.sid'];
+      const sessionId = sessionCookie.split('.')[0].slice(2);
+
+      return this.userService.addSocialMediaToUser(
+        {
+          id: profile.id,
+          social_media_name: profile.social_media_name,
+          accessToken: profile.accessToken,
+          refreshToken: profile.refreshToken,
+          username: profile.username,
+          img: profile.img,
+          email: profile.email,
+        },
+        sessionId,
+      );
     }
   }
 }

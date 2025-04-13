@@ -11,7 +11,7 @@ export class UserService {
 
   async getAllUsers() {
     return this.prisma.user.findMany();
-  }  
+  }
 
   async createUser(details: UserLogin): Promise<User> {
     return this.prisma.user.create({
@@ -88,14 +88,23 @@ export class UserService {
   getSocialMediaById(id: string) {
     return this.prisma.socialMedia.findUnique({
       where: {
-        id: id
-      }
+        id: id,
+      },
     });
   }
 
-  async addSocialMediaToUser(details: Social) {
-    
-    const session = await this.prisma.session.findFirst();
+  async addSocialMediaToUser(details: Social, sessionId?: string) {
+    let session;
+
+    if (sessionId) {
+      session = await this.prisma.session.findUnique({
+        where: {
+          sid: sessionId,
+        },
+      });
+    } else {
+      session = await this.prisma.session.findFirst();
+    }
 
     if (!session) {
       throw new Error('Session not found');
@@ -107,18 +116,17 @@ export class UserService {
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     return this.prisma.socialMedia.create({
       data: {
         id: details.id,
         social_media_name: details.social_media_name,
         access_token: details.accessToken,
         refresh_token: details.refreshToken,
-        user: {	
+        user: {
           connect: { id: user.id },
         },
       },
     });
   }
-
 }

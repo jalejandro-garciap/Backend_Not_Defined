@@ -12,6 +12,7 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
       clientID: process.env.INSTAGRAM_CLIENT_ID,
       clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
       callbackURL: process.env.INSTAGRAM_CALLBACK_URL,
+      passReqToCallback: true,
       scope: [
         'instagram_business_basic',
         'instagram_business_manage_messages',
@@ -22,6 +23,7 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
   }
 
   async validate(
+    req: any,
     accessToken: string,
     refreshToken: string,
     profile: any,
@@ -29,7 +31,8 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
   ) {
     refreshToken = refreshToken || 'no-refresh-token';
     try {
-      const user = await this.authService.validateSocialMedia({
+      await this.authService.validateSocialMedia(
+        {
           id: profile.id,
           social_media_name: 'instagram',
           username: profile.username,
@@ -38,8 +41,23 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
           accessToken,
           refreshToken,
         },
+        req,
       );
-      done(null, user);
+
+      if (!req.session.socialConnections) {
+        req.session.socialConnections = {};
+      }
+
+      req.session.socialConnections['instagram'] = {
+        id: profile.id,
+        username: profile.username,
+      };
+
+      done(null, {
+        provider: 'instagram',
+        id: profile.id,
+        socialConnection: true,
+      });
     } catch (err) {
       done(err, false);
     }
@@ -58,7 +76,6 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
 
         try {
           const json = JSON.parse(body);
-          console.log(json);
           const profile = {
             provider: 'instagram',
             id: json.id,
