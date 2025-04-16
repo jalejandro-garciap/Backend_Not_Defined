@@ -9,7 +9,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SocialMedia, User } from '@prisma/client';
-import { AuthenticatedGuard, GoogleAuthGuard, InstagramAuthGuard, TiktokAuthGuard } from '../guards/AuthGuard';
+import {
+  AuthenticatedGuard,
+  GoogleAuthGuard,
+  InstagramAuthGuard,
+  TiktokAuthGuard,
+} from '../guards/AuthGuard';
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
 import { AuthUser } from 'src/utils/decorators';
@@ -67,6 +72,17 @@ export class AuthController {
   @UseGuards(AuthenticatedGuard)
   getUser(@Param('id') id: string) {
     return this.userService.getUser(id);
+  }
+
+  @Delete('social-media/:name')
+  @UseGuards(AuthenticatedGuard)
+  async deleteSocialMedia(@Param('name') name: string, @AuthUser() user: User) {
+    const socialMedia = await this.userService.getSocialMediaByNameAndUserId(
+      name,
+      user.id,
+    );
+    if (!socialMedia) throw new Error('Social media not found');
+    return this.userService.deleteSocialMedia(socialMedia.id);
   }
 
   @Delete('logout')

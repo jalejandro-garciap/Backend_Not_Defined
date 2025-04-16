@@ -5,29 +5,74 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class RequestService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRequest(senderId: string, recipientId: string, comment: string, duration: Date) {
+  async createRequest(
+    senderId: string,
+    recipientId: string,
+    comment: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
     return this.prisma.request.create({
       data: {
-        senderId,
-        recipientId,
         comment,
-        duration,
+        startDate,
+        endDate,
+        sender: { connect: { id: senderId } },
+        recipient: { connect: { id: recipientId } },
       },
     });
   }
 
-  async getSentRequests(userId: string) {
-    return this.prisma.request.findMany({
-      where: { senderId: userId },
-      include: { recipient: true },
+  async getAgencyPendingStreamers(sponsorId: string) {
+    const pendingRequests = await this.prisma.request.findMany({
+      where: { senderId: sponsorId, status: 'pending' },
+      select: {
+        recipient: {
+          select: {
+            id: true,
+            username: true,
+            profile_img: true,
+          },
+        },
+      },
     });
+
+    return pendingRequests.map((request) => ({
+      id: request.recipient.id,
+      name: request.recipient.username,
+      profile_img: request.recipient.profile_img,
+    }));
   }
 
   async getReceivedRequests(userId: string) {
-    return this.prisma.request.findMany({
-      where: { recipientId: userId },
-      include: { sender: true },
+    const requests = await this.prisma.request.findMany({
+      where: { recipientId: userId, status: 'pending' },
+      select: {
+        id: true,
+        status: true,
+        comment: true,
+        startDate: true,
+        endDate: true,
+        sender: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
+
+    return requests.map((request) => ({
+      id: request.id,
+      agency: {
+        id: request.sender.id,
+        name: request.sender.name,
+      },
+      comment: request.comment,
+      status: request.status,
+      startDate: request.startDate,
+      endDate: request.endDate,
+    }));
   }
 
   async updateRequestStatus(requestId: string, status: string) {

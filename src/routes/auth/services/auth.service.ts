@@ -21,6 +21,7 @@ export class AuthService {
         refreshToken: profile.refreshToken,
       });
     }
+    return user;
   }
 
   async validateSocialMedia(profile: any, req: Request): Promise<any> {
@@ -43,5 +44,7 @@ export class AuthService {
         sessionId,
       );
     }
+
+    return social_media;
   }
 }

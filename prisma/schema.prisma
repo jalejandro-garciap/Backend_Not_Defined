@@ -15,9 +15,9 @@ datasource db {
 
 model User {
   id            String        @id @default(cuid())
-  first_name    String
-  last_name     String
-  email         String       @unique
+  first_name    String?
+  last_name     String?
+  email         String        @unique
   username      String
   profile_img   String
   phone         String
@@ -27,17 +27,17 @@ model User {
   last_login    DateTime      @default(now())
   social_medias SocialMedia[]
 
-  managerOnSponsors ManagerOnSponsor[]
+  managerOnSponsors  ManagerOnSponsor[]
   streamerOnSponsors StreamerOnSponsor[]
 
-  sender    Request[] @relation("Sender")
-  recipient Request[] @relation("Recipient")
+  requests Request[]
 }
 
 model SocialMedia {
   id                String   @id @default(cuid())
   user_id           String
   social_media_name String
+  username          String
   access_token      String
   refresh_token     String
   last_connection   DateTime @default(now())
@@ -56,12 +56,15 @@ model Session {
 }
 
 model Sponsor {
-  id              String   @id @default(cuid())
+  id              String              @id @default(cuid())
+  name            String
+  description     String
   managers        ManagerOnSponsor[]
   streamers       StreamerOnSponsor[]
   expiration_date DateTime
-  created_at      DateTime @default(now())
-  active          Boolean  @default(true)
+  created_at      DateTime            @default(now())
+  active          Boolean             @default(true)
+  senders         Request[]
 }
 
 model Request {
@@ -70,30 +73,29 @@ model Request {
   recipientId String
   status      String   @default("pending")
   comment     String
-  duration    DateTime
+  startDate   DateTime
+  endDate     DateTime
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  sender      User @relation("Sender", fields: [senderId], references: [id])
-  recipient   User @relation("Recipient", fields: [recipientId], references: [id])
+  sender    Sponsor @relation(fields: [senderId], references: [id])
+  recipient User    @relation(fields: [recipientId], references: [id])
 }
 
 model ManagerOnSponsor {
-  userId    String
-  sponsorId String
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  sponsorId String   @unique
   since     DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   sponsor   Sponsor  @relation(fields: [sponsorId], references: [id])
-
-  @@id([userId, sponsorId])
 }
 
 model StreamerOnSponsor {
-  userId    String
-  sponsorId String
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  sponsorId String   @unique
   since     DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   sponsor   Sponsor  @relation(fields: [sponsorId], references: [id])
-
-  @@id([userId, sponsorId])
 }
