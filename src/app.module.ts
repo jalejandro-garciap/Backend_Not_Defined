@@ -9,6 +9,7 @@ import { TiktokModule } from './routes/tiktok/tiktok.module';
 import { ReportModule } from './reports/reports.module';
 import { InstagramModule } from './routes/instagram/instagram.module';
 import { RequestModule } from './routes/request/request.module';
+import { YouTubeModule } from './routes/youtube/youtube.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RequestModule } from './routes/request/request.module';
     TiktokModule,
     ReportModule,
     InstagramModule,
+    YouTubeModule,
     RequestModule,
   ],
   controllers: [AppController],

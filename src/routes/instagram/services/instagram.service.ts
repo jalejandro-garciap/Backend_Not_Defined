@@ -277,7 +277,7 @@ export class InstagramService {
           media_url: media.media_url || media.thumbnail_url,
           caption: media.caption || 'Sin descripción',
           followers_count: userData.followers_count || 0,
-          video_views: null,
+          video_views: media.views,
           reach: metrics.reach || 0,
           impressions: metrics.impressions || null,
           likes: metrics.likes || 0,
