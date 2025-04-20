@@ -62,7 +62,7 @@ export class MultiUserReportService {
         user: {
           id: user.id,
           username: user.username,
-          profile_image: user.profile_image,
+          profile_image: user.profile_img,
         },
       }));
 
@@ -157,7 +157,7 @@ export class MultiUserReportService {
         user: {
           id: user.id,
           username: user.username,
-          profile_image: user.profile_image,
+          profile_image: user.profile_img,
         },
       }));
 

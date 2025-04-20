@@ -6,16 +6,18 @@ import { UserService } from '../user/services/user.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TikTokStrategy } from './strategies/TikTokStrategy';
 import { InstagramStrategy } from './strategies/InstagramStrategy';
+import { GoogleStrategy } from './strategies/GoogleStrategy';
+import { UserModule } from '../user/user.module';
 
 @Module({
-  imports: [],
+  imports: [UserModule],
   controllers: [AuthController],
   providers: [
     TikTokStrategy,
     InstagramStrategy,
+    GoogleStrategy,
     SessionSerializer,
     AuthService,
-    UserService,
     PrismaService,
   ],
 })

@@ -50,6 +50,24 @@ async function bootstrap() {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Middleware personalizado para manejar autenticaciones sociales sin sobreescribir la sesión principal
+  app.use((req, res, next) => {
+    const originalLogin = req.logIn;
+
+    req.logIn = function (user, options, done) {
+      if (user && user.socialConnection && req.user) {
+        if (typeof done === 'function') {
+          return done(null);
+        }
+        return Promise.resolve();
+      }
+
+      return originalLogin.apply(this, arguments);
+    };
+
+    next();
+  });
+
   await app.listen(4000);
 }
 bootstrap();
