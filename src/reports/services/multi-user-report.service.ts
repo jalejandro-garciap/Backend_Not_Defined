@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TiktokService } from 'src/routes/tiktok/services/tiktok.service';
 import { ReportService } from './report.service';
 import { ReportFormat } from '../interfaces/report-data.interfaces';
 import { InstagramService } from 'src/routes/instagram/services/instagram.service';
+import { YoutubeService } from 'src/routes/youtube/services/youtube.service';
 
 @Injectable()
 export class MultiUserReportService {
   constructor(
+    @Inject() private readonly prisma: PrismaService,
+    @Inject() private readonly youtubeService: YoutubeService,
     private readonly prismaService: PrismaService,
     private readonly tiktokService: TiktokService,
     private readonly instagramService: InstagramService,
@@ -195,6 +198,76 @@ export class MultiUserReportService {
     return this.reportService.generateMultiUserInstagramReport(
       combinedMedia,
       usersWithInstagram,
+      format,
+      reportTitle,
+      reportSubtitle,
+    );
+  }
+
+  async generateMultiUserYoutubeReport(
+    userIds: string[],
+    format: ReportFormat,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<Buffer> {
+    const dateRange = startDate || endDate ? { startDate, endDate } : undefined;
+
+    // load only enabled YouTube tokens
+    const users = await this.prismaService.user.findMany({
+      where: { id: { in: userIds } },
+      include: {
+        social_medias: {
+          where: { social_media_name: 'youtube', enabled: true },
+        },
+      },
+    });
+    const usersWithYoutube = users.filter((u) => u.social_medias.length > 0);
+    if (usersWithYoutube.length === 0) {
+      throw new Error('No valid YouTube accounts found for the selected users');
+    }
+
+    // fetch & tag each user’s metrics
+    const metricsArrays = await Promise.all(
+      usersWithYoutube.map(async (user) => {
+        const token = user.social_medias[0].access_token;
+        const publishedAfter = dateRange?.startDate?.toISOString();
+        const publishedBefore = dateRange?.endDate?.toISOString();
+        const list = await this.youtubeService.getAllVideoMetrics(
+          token,
+          '',
+          publishedAfter,
+          publishedBefore,
+        );
+        return list.map((m) => ({
+          ...m,
+          user: {
+            id: user.id,
+            username: user.username,
+            profile_image: user.profile_img,
+          },
+        }));
+      }),
+    );
+    const combined = metricsArrays.flat();
+    if (combined.length === 0) {
+      throw new Error(
+        'No se encontraron videos para el rango de fechas seleccionado',
+      );
+    }
+
+    // build title/subtitle
+    let reportTitle = 'Informe YouTube Multi-Usuario';
+    let reportSubtitle = 'Informe de rendimiento de videos de YouTube';
+    if (startDate || endDate) {
+      reportSubtitle = `Periodo: ${
+        startDate ? this.formatDateForTitle(startDate) : 'Inicio'
+      } a ${endDate ? this.formatDateForTitle(endDate) : 'Actual'}`;
+    }
+
+    // delegate to ReportService
+    return this.reportService.generateMultiUserYoutubeReport(
+      combined,
+      usersWithYoutube,
       format,
       reportTitle,
       reportSubtitle,

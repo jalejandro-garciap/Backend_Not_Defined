@@ -15,4 +15,5 @@ export interface YoutubeVideoMetrics {
   viewing_time_avg: number | null;   // Tiempo promedio de visualización (se obtiene vía Analytics)
   engagement: number;                // Engagement total (por ejemplo, likes + comments + shares; sin saved)
   engagement_rate: number;           // Engagement rate (engagement / reach)
+  createdAt: Date;                   // Fecha de publicación (timestamp)
 }

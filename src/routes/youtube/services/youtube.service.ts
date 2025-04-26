@@ -8,7 +8,12 @@ export class YoutubeService {
   constructor(private readonly httpService: HttpService) {}
 
   // 1. Obtiene la lista de videos del canal autenticado
-  async getYoutubeVideos(accessToken: string, pageToken?: string): Promise<any[]> {
+  async getYoutubeVideos(
+    accessToken: string,
+    pageToken?: string,
+    publishedAfter?: string,
+    publishedBefore?: string,
+  ): Promise<any[]> {
     const url = 'https://www.googleapis.com/youtube/v3/search';
     const params = {
       part: 'snippet',
@@ -16,24 +21,34 @@ export class YoutubeService {
       forMine: 'true',
       type: 'video',
       pageToken: pageToken || '',
+      publishedAfter: publishedAfter || '',
+      publishedBefore: publishedBefore || '',
     };
 
     const { data } = await firstValueFrom(
-      this.httpService.get(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params,
-      }).pipe(
-        catchError((error) => {
-          console.error('Error fetching YouTube videos:', error.response.data);
-          throw error.response.data;
+      this.httpService
+        .get(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
         })
-      )
+        .pipe(
+          catchError((error) => {
+            console.error(
+              'Error fetching YouTube videos:',
+              error.response.data,
+            );
+            throw error.response.data;
+          }),
+        ),
     );
     return data.items;
   }
 
   // 2. Obtiene detalles (snippet y statistics) de videos mediante sus IDs
-  async getVideosDetails(accessToken: string, videoIds: string[]): Promise<any[]> {
+  async getVideosDetails(
+    accessToken: string,
+    videoIds: string[],
+  ): Promise<any[]> {
     const url = 'https://www.googleapis.com/youtube/v3/videos';
     const params = {
       part: 'snippet,statistics',
@@ -41,15 +56,17 @@ export class YoutubeService {
     };
 
     const { data } = await firstValueFrom(
-      this.httpService.get(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params,
-      }).pipe(
-        catchError((error) => {
-          console.error('Error fetching video details:', error.response.data);
-          throw error.response.data;
+      this.httpService
+        .get(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
         })
-      )
+        .pipe(
+          catchError((error) => {
+            console.error('Error fetching video details:', error.response.data);
+            throw error.response.data;
+          }),
+        ),
     );
     return data.items;
   }
@@ -63,15 +80,17 @@ export class YoutubeService {
     };
 
     const { data } = await firstValueFrom(
-      this.httpService.get(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params,
-      }).pipe(
-        catchError((error) => {
-          console.error('Error fetching channel data:', error.response.data);
-          throw error.response.data;
+      this.httpService
+        .get(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
         })
-      )
+        .pipe(
+          catchError((error) => {
+            console.error('Error fetching channel data:', error.response.data);
+            throw error.response.data;
+          }),
+        ),
     );
     return data.items && data.items.length > 0 ? data.items[0] : null;
   }
@@ -85,10 +104,20 @@ export class YoutubeService {
   }
 
   // 4. Función consolidada que obtiene las métricas de todos los videos
-  async getAllVideoMetrics(accessToken: string, pageToken?: string): Promise<YoutubeVideoMetrics[]> {
+  async getAllVideoMetrics(
+    accessToken: string,
+    pageToken?: string,
+    publishedAfter?: string,
+    publishedBefore?: string,
+  ): Promise<YoutubeVideoMetrics[]> {
     // a) Obtener videos mediante el endpoint de búsqueda
-    const videos = await this.getYoutubeVideos(accessToken, pageToken);
-    const videoIds = videos.map(video => video.id.videoId);
+    const videos = await this.getYoutubeVideos(
+      accessToken,
+      pageToken,
+      publishedAfter,
+      publishedBefore,
+    );
+    const videoIds = videos.map((video) => video.id.videoId);
 
     // b) Obtener detalles de los videos (snippet y statistics)
     const videosDetails = await this.getVideosDetails(accessToken, videoIds);
@@ -100,15 +129,18 @@ export class YoutubeService {
     }
     // d) Obtener datos del canal (para el número de suscriptores)
     const channelData = await this.getChannelData(accessToken, channelId);
-    const subscribersCount = channelData && channelData.statistics && channelData.statistics.subscriberCount
-      ? Number(channelData.statistics.subscriberCount)
-      : 0;
+    const subscribersCount =
+      channelData &&
+      channelData.statistics &&
+      channelData.statistics.subscriberCount
+        ? Number(channelData.statistics.subscriberCount)
+        : 0;
 
     // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
-    const metrics: YoutubeVideoMetrics[] = videosDetails.map(video => {
+    const metrics: YoutubeVideoMetrics[] = videosDetails.map((video) => {
       const snippet = video.snippet;
       const statistics = video.statistics;
-      
+
       const viewCount = Number(statistics.viewCount) || 0;
       const likes = Number(statistics.likeCount) || 0;
       const comments = Number(statistics.commentCount) || 0;
@@ -117,18 +149,18 @@ export class YoutubeService {
       const saved = 0;
       const viewing_time_total = null;
       const viewing_time_avg = null;
-      
+
       // Se usará viewCount como aproximación de reach
       const reach = viewCount;
       const impressions = null;
       const engagement = likes + comments + shares + saved;
       const engagement_rate = reach > 0 ? engagement / reach : 0;
-      
+
       return {
         creator: snippet.channelTitle,
         social_media: 'youtube',
         permalink: `https://www.youtube.com/watch?v=${video.id}`,
-        description: snippet.description || "",
+        description: snippet.description || '',
         followers_count: subscribersCount,
         video_views: viewCount,
         reach: reach,
@@ -141,6 +173,7 @@ export class YoutubeService {
         viewing_time_avg: viewing_time_avg,
         engagement: engagement,
         engagement_rate: engagement_rate,
+        createdAt: new Date(snippet.publishedAt),
       };
     });
 
