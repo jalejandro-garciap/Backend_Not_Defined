@@ -20,7 +20,6 @@ import { ReportFormat } from 'src/reports/interfaces/report-data.interfaces';
 @Controller('youtube')
 export class YoutubeController {
   constructor(
-    @Inject() private readonly youtubeService: YoutubeService,
     @Inject() private readonly multiUserReportService: MultiUserReportService,
   ) {}
 

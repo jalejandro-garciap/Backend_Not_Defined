@@ -7,11 +7,13 @@ import { CsvService } from './services/utils/csv.service';
 import { MultiUserReportService } from './services/multi-user-report.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { InstagramModule } from 'src/routes/instagram/instagram.module';
+import { YouTubeModule } from 'src/routes/youtube/youtube.module';
 
 @Module({
   imports: [
     forwardRef(() => TiktokModule),
     forwardRef(() => InstagramModule),
+    forwardRef(() => YouTubeModule),
     PrismaModule,
   ],
   providers: [
