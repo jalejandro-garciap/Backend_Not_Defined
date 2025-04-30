@@ -8,6 +8,7 @@ import { TikTokStrategy } from './strategies/TikTokStrategy';
 import { InstagramStrategy } from './strategies/InstagramStrategy';
 import { GoogleStrategy } from './strategies/GoogleStrategy';
 import { UserModule } from '../user/user.module';
+import { YoutubeStrategy } from './strategies/YoutubeStrategy';
 
 @Module({
   imports: [UserModule],
@@ -16,6 +17,7 @@ import { UserModule } from '../user/user.module';
     TikTokStrategy,
     InstagramStrategy,
     GoogleStrategy,
+    YoutubeStrategy,
     SessionSerializer,
     AuthService,
     PrismaService,
