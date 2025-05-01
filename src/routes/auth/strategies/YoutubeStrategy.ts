@@ -4,7 +4,7 @@ import { Strategy as YoutubeV3Strategy, VerifyCallback } from 'passport-youtube-
 import { AuthService } from '../services/auth.service';
 
 @Injectable()
-export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy, 'youtube') {
+export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
   constructor(private readonly authService: AuthService) {
     super({
       clientID: process.env.YOUTUBE_CLIENT_ID,
