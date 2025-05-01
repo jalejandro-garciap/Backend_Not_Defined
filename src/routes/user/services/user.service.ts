@@ -126,11 +126,21 @@ export class UserService {
     });
   }
 
-  removeStreamerFromAgency(agencyId: string, streamerId: string) {
-    return this.prisma.streamerOnSponsor.delete({
+  async removeStreamerFromAgency(agencyId: string, streamerId: string) {
+    const streamerOnSponsor = await this.prisma.streamerOnSponsor.findFirst({
       where: {
         userId: streamerId,
         sponsorId: agencyId,
+      },
+    });
+
+    if (!streamerOnSponsor) {
+      throw new Error('StreamerOnSponsor not found');
+    }
+
+    return this.prisma.streamerOnSponsor.delete({
+      where: {
+        id: streamerOnSponsor.id,
       },
     });
   }
