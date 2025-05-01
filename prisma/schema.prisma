@@ -61,7 +61,6 @@ model Sponsor {
   description     String
   managers        ManagerOnSponsor[]
   streamers       StreamerOnSponsor[]
-  expiration_date DateTime
   created_at      DateTime            @default(now())
   active          Boolean             @default(true)
   senders         Request[]
