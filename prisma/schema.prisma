@@ -84,8 +84,8 @@ model Request {
 
 model ManagerOnSponsor {
   id        String   @id @default(cuid())
-  userId    String   @unique
-  sponsorId String   @unique
+  userId    String
+  sponsorId String
   since     DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   sponsor   Sponsor  @relation(fields: [sponsorId], references: [id])
@@ -93,8 +93,8 @@ model ManagerOnSponsor {
 
 model StreamerOnSponsor {
   id        String   @id @default(cuid())
-  userId    String   @unique
-  sponsorId String   @unique
+  userId    String
+  sponsorId String
   since     DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   sponsor   Sponsor  @relation(fields: [sponsorId], references: [id])
