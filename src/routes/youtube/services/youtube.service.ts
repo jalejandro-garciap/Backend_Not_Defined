@@ -15,15 +15,26 @@ export class YoutubeService {
     publishedBefore?: string,
   ): Promise<any[]> {
     const url = 'https://www.googleapis.com/youtube/v3/search';
-    const params = {
+    const params: {
+      part: string;
+      maxResults: number;
+      forMine: string;
+      type: string;
+      pageToken?: string;
+      publishedAfter?: string;
+      publishedBefore?: string;
+    } = {
       part: 'snippet',
       maxResults: 20,
       forMine: 'true',
       type: 'video',
       pageToken: pageToken || '',
-      publishedAfter: publishedAfter || '',
-      publishedBefore: publishedBefore || '',
     };
+
+    if (publishedAfter && publishedBefore) {
+      params.publishedAfter = new Date(publishedAfter).toISOString();
+      params.publishedBefore = new Date(publishedBefore).toISOString();
+    }
 
     const { data } = await firstValueFrom(
       this.httpService

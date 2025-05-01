@@ -140,12 +140,19 @@ export class ManagerController {
               startDate,
               endDate,
             )
-          : await this.multiUserReportService.generateMultiUserInstagramReport(
-              dto.streamerIds,
-              reportFormat,
-              startDate,
-              endDate,
-            );
+          : socialMedia === 'instagram'
+            ? await this.multiUserReportService.generateMultiUserInstagramReport(
+                dto.streamerIds,
+                reportFormat,
+                startDate,
+                endDate,
+              )
+            : await this.multiUserReportService.generateMultiUserYoutubeReport(
+                dto.streamerIds,
+                reportFormat,
+                startDate,
+                endDate,
+              );
 
       if (reportFormat === ReportFormat.CSV) {
         res.setHeader('Content-Type', 'text/csv');
