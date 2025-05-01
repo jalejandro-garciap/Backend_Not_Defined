@@ -14,7 +14,11 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
       clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
       callbackURL: process.env.YOUTUBE_CALLBACK_URL,
       passReqToCallback: true,
-      scope: ['https://www.googleapis.com/auth/youtube.readonly'],
+      scope: [
+        'profile',
+        'email',
+        'https://www.googleapis.com/auth/youtube.readonly',
+      ],
     });
   }
 
