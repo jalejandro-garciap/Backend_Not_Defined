@@ -14,6 +14,7 @@ import {
   GoogleAuthGuard,
   InstagramAuthGuard,
   TiktokAuthGuard,
+  YouTubeAuthGuard,
 } from '../guards/AuthGuard';
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
@@ -56,6 +57,18 @@ export class AuthController {
   @Get('redirect/instagram')
   @UseGuards(InstagramAuthGuard)
   async instagramAuthCallback(@Res() res) {
+    res.redirect(process.env.FRONTEND_URL);
+  }
+
+  @Get('login/youtube')
+  @UseGuards(YouTubeAuthGuard)
+  async youtubeAuth() {
+    return 'login';
+  }
+
+  @Get('redirect/youtube')
+  @UseGuards(YouTubeAuthGuard)
+  async youtubeAuthCallback(@Res() res) {
     res.redirect(process.env.FRONTEND_URL);
   }
 
