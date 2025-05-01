@@ -232,13 +232,14 @@ export class MultiUserReportService {
         const token = user.social_medias[0].access_token;
         const publishedAfter = dateRange?.startDate?.toISOString();
         const publishedBefore = dateRange?.endDate?.toISOString();
-        const list = await this.youtubeService.getAllVideoMetrics(
+
+        const allMetrics = await this.youtubeService.getAllVideoMetrics(
           token,
-          '',
           publishedAfter,
           publishedBefore,
         );
-        return list.map((m) => ({
+
+        return allMetrics.map((m) => ({
           ...m,
           user: {
             id: user.id,

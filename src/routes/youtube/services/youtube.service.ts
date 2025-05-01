@@ -13,7 +13,7 @@ export class YoutubeService {
     pageToken?: string,
     publishedAfter?: string,
     publishedBefore?: string,
-  ): Promise<any[]> {
+  ): Promise<{ items: any[]; nextPageToken?: string }> {
     const url = 'https://www.googleapis.com/youtube/v3/search';
     const params: {
       part: string;
@@ -28,12 +28,14 @@ export class YoutubeService {
       maxResults: 20,
       forMine: 'true',
       type: 'video',
-      pageToken: pageToken || '',
     };
 
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
     if (publishedAfter && publishedBefore) {
-      params.publishedAfter = new Date(publishedAfter).toISOString();
-      params.publishedBefore = new Date(publishedBefore).toISOString();
+      params.publishedAfter = publishedAfter;
+      params.publishedBefore = publishedBefore;
     }
 
     const { data } = await firstValueFrom(
@@ -52,7 +54,7 @@ export class YoutubeService {
           }),
         ),
     );
-    return data.items;
+    return { items: data.items, nextPageToken: data.nextPageToken };
   }
 
   // 2. Obtiene detalles (snippet y statistics) de videos mediante sus IDs
@@ -60,6 +62,7 @@ export class YoutubeService {
     accessToken: string,
     videoIds: string[],
   ): Promise<any[]> {
+    if (!videoIds.length) return [];
     const url = 'https://www.googleapis.com/youtube/v3/videos';
     const params = {
       part: 'snippet,statistics',
@@ -114,21 +117,27 @@ export class YoutubeService {
     return matches ? matches.join(' ') : '';
   }
 
-  // 4. Función consolidada que obtiene las métricas de todos los videos
+  // 4. Función consolidada que obtiene las métricas de todos los videos (todas las páginas)
   async getAllVideoMetrics(
     accessToken: string,
-    pageToken?: string,
     publishedAfter?: string,
     publishedBefore?: string,
   ): Promise<YoutubeVideoMetrics[]> {
-    // a) Obtener videos mediante el endpoint de búsqueda
-    const videos = await this.getYoutubeVideos(
-      accessToken,
-      pageToken,
-      publishedAfter,
-      publishedBefore,
-    );
-    const videoIds = videos.map((video) => video.id.videoId);
+    let allVideos: any[] = [];
+    let pageToken: string | undefined = undefined;
+    do {
+      const { items, nextPageToken } = await this.getYoutubeVideos(
+        accessToken,
+        pageToken,
+        publishedAfter,
+        publishedBefore,
+      );
+      allVideos = allVideos.concat(items);
+      pageToken = nextPageToken;
+    } while (pageToken);
+
+    const videoIds = allVideos.map((video) => video.id.videoId).filter(Boolean);
+    if (!videoIds.length) return [];
 
     // b) Obtener detalles de los videos (snippet y statistics)
     const videosDetails = await this.getVideosDetails(accessToken, videoIds);
