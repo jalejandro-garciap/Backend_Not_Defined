@@ -103,7 +103,7 @@ export class AuthController {
   logout(@Res() res: Response, @Req() req: Request) {
     req.logout((e) => {
       if (e) console.error(e);
-      res.send(200).status(200);
+      res.sendStatus(200);
     });
   }
 }
