@@ -9,6 +9,7 @@ import {
 import { RequestService } from '../request/services/request.service';
 import { StreamerService } from './services/streamer.service';
 import { ReportModule } from 'src/reports/reports.module';
+import { AdminService } from './services/admin.service';
 
 @Module({
   controllers: [StreamerController, AdminController, ManagerController],
@@ -18,6 +19,7 @@ import { ReportModule } from 'src/reports/reports.module';
     PrismaService,
     RequestService,
     StreamerService,
+    AdminService,
   ],
   exports: [UserService, StreamerService],
 })
