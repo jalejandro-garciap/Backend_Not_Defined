@@ -81,10 +81,15 @@ export class YoutubeService {
   // 3. Obtiene datos del canal para extraer el número de suscriptores
   async getChannelData(accessToken: string, channelId: string): Promise<any> {
     const url = 'https://www.googleapis.com/youtube/v3/channels';
-    const params = {
+    let params: any = {
       part: 'statistics',
-      id: channelId,
     };
+
+    if (channelId) {
+      params.id = channelId;
+    } else {
+      params.mine = true; // Si no se pasa channelId, obtener el canal del usuario autenticado
+    }
 
     const { data } = await firstValueFrom(
       this.httpService
