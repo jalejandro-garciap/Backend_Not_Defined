@@ -38,6 +38,8 @@ export class YoutubeService {
       params.publishedBefore = publishedBefore;
     }
 
+    console.log('Fetching YouTube videos with params:', params);
+
     const { data } = await firstValueFrom(
       this.httpService
         .get(url, {
@@ -139,8 +141,13 @@ export class YoutubeService {
     const videoIds = allVideos.map((video) => video.id.videoId).filter(Boolean);
     if (!videoIds.length) return [];
 
-    // b) Obtener detalles de los videos (snippet y statistics)
-    const videosDetails = await this.getVideosDetails(accessToken, videoIds);
+    // Procesar los IDs en lotes de 50
+    const videosDetails: any[] = [];
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const batchIds = videoIds.slice(i, i + 50);
+      const details = await this.getVideosDetails(accessToken, batchIds);
+      videosDetails.push(...details);
+    }
 
     // c) Suponiendo que todos los videos provienen del mismo canal, se obtiene el channelId del primer video
     let channelId = '';
