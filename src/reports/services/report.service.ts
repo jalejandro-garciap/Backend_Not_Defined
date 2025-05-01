@@ -272,7 +272,7 @@ export class ReportService {
     // normalize items
     const processed = metrics.map((item) => ({
       id: item.permalink,
-      title: item.creator,
+      title: item.title,
       description: item.description,
       views: item.video_views,
       reach: item.reach,

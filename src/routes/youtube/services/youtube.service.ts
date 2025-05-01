@@ -7,26 +7,19 @@ import { YoutubeVideoMetrics } from '../utils/interfaces/youtube_metrics.interfa
 export class YoutubeService {
   constructor(private readonly httpService: HttpService) {}
 
-  // 1. Obtiene la lista de videos del canal autenticado
+  // 1. Obtiene la lista de videos del canal autenticado usando channelId y fechas
   async getYoutubeVideos(
     accessToken: string,
+    channelId: string,
     pageToken?: string,
     publishedAfter?: string,
     publishedBefore?: string,
   ): Promise<{ items: any[]; nextPageToken?: string }> {
     const url = 'https://www.googleapis.com/youtube/v3/search';
-    const params: {
-      part: string;
-      maxResults: number;
-      forMine: string;
-      type: string;
-      pageToken?: string;
-      publishedAfter?: string;
-      publishedBefore?: string;
-    } = {
+    const params: any = {
       part: 'snippet',
       maxResults: 20,
-      forMine: 'true',
+      channelId,
       type: 'video',
     };
 
@@ -38,8 +31,6 @@ export class YoutubeService {
       params.publishedBefore = publishedBefore;
     }
 
-    console.log('Fetching YouTube videos with params:', params);
-
     const { data } = await firstValueFrom(
       this.httpService
         .get(url, {
@@ -50,9 +41,9 @@ export class YoutubeService {
           catchError((error) => {
             console.error(
               'Error fetching YouTube videos:',
-              error.response.data,
+              error.response?.data || error,
             );
-            throw error.response.data;
+            throw error.response?.data || error;
           }),
         ),
     );
@@ -125,11 +116,19 @@ export class YoutubeService {
     publishedAfter?: string,
     publishedBefore?: string,
   ): Promise<YoutubeVideoMetrics[]> {
+    // 1. Obtener el channelId del usuario autenticado
+    const channelData = await this.getChannelData(accessToken, '');
+    if (!channelData || !channelData.id) {
+      throw new Error('No se pudo obtener el channelId del usuario');
+    }
+    const channelId = channelData.id;
+
     let allVideos: any[] = [];
     let pageToken: string | undefined = undefined;
     do {
       const { items, nextPageToken } = await this.getYoutubeVideos(
         accessToken,
+        channelId,
         pageToken,
         publishedAfter,
         publishedBefore,
@@ -149,13 +148,7 @@ export class YoutubeService {
       videosDetails.push(...details);
     }
 
-    // c) Suponiendo que todos los videos provienen del mismo canal, se obtiene el channelId del primer video
-    let channelId = '';
-    if (videosDetails.length > 0) {
-      channelId = videosDetails[0].snippet.channelId;
-    }
     // d) Obtener datos del canal (para el número de suscriptores)
-    const channelData = await this.getChannelData(accessToken, channelId);
     const subscribersCount =
       channelData &&
       channelData.statistics &&
@@ -185,6 +178,7 @@ export class YoutubeService {
 
       return {
         creator: snippet.channelTitle,
+        title: snippet.title,
         social_media: 'youtube',
         permalink: `https://www.youtube.com/watch?v=${video.id}`,
         description: snippet.description || '',

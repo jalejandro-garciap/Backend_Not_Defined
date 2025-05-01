@@ -1,5 +1,6 @@
 export interface YoutubeVideoMetrics {
-  creator: string;                   // Nombre de usuario o canal
+  creator: string;                   // Nombre de usuario o canal\
+  title: string;                     // Título del video
   social_media: string;              // 'youtube'
   permalink: string;                 // Enlace a la publicación (video)
   description: string;               // Texto del description del video (o hashtags extraídos)
