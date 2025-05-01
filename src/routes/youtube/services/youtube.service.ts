@@ -31,8 +31,6 @@ export class YoutubeService {
       params.publishedBefore = publishedBefore;
     }
 
-    console.log('Fetching YouTube videos with params:', params);
-
     const { data } = await firstValueFrom(
       this.httpService
         .get(url, {
