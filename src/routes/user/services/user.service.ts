@@ -14,7 +14,11 @@ export class UserService {
   ) {}
 
   async getAllUsers() {
-    return this.prisma.user.findMany();
+    return this.prisma.user.findMany({
+      include: {
+        managerOnSponsors: true,
+      },
+    });
   }
 
   async createUser(details: UserLogin): Promise<User> {
