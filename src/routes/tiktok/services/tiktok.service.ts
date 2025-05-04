@@ -11,6 +11,7 @@ export class TiktokService {
   async getAllTiktokVideos(
     accessToken: string,
     dateRange?: { startDate?: Date; endDate?: Date },
+    hashtags?: string[],
     maxPages: number = 5,
   ): Promise<TikTokVideo[]> {
     const allVideos: TikTokVideo[] = [];
@@ -21,6 +22,12 @@ export class TiktokService {
     let foundVideosInRange = false;
     let consecutivePagesWithNoMatchingVideos = 0;
     const MAX_PAGES_WITHOUT_MATCHES = 2;
+
+    const normalizedHashtags =
+      hashtags?.map((tag) =>
+        tag.startsWith('#') ? tag.toLowerCase() : `#${tag.toLowerCase()}`,
+      ) || [];
+    const applyHashtagFilter = dateRange && normalizedHashtags.length > 0;
 
     while (hasMore && pageCount < maxPages) {
       try {
@@ -44,10 +51,6 @@ export class TiktokService {
             )
             .pipe(
               catchError((error) => {
-                console.error(
-                  'Error al obtener videos:',
-                  error.response?.data || error.message,
-                );
                 throw error.response?.data || error;
               }),
             ),
@@ -58,62 +61,66 @@ export class TiktokService {
         }
 
         let videosInRangeInThisPage = 0;
-        if (dateRange && (dateRange.startDate || dateRange.endDate)) {
-          data.data.videos.forEach((video) => {
-            const videoDate = new Date(video.create_time * 1000);
-            let isInRange = true;
+        const videosToAdd: TikTokVideo[] = [];
 
+        data.data.videos.forEach((video) => {
+          let isInDateRange = true;
+          if (dateRange && (dateRange.startDate || dateRange.endDate)) {
+            const videoDate = new Date(video.create_time * 1000);
             const year = videoDate.getFullYear();
             const month = videoDate.getMonth();
             const day = videoDate.getDate();
-
             const normalizedVideoDate = new Date(Date.UTC(year, month, day));
 
             if (
               dateRange.startDate &&
               normalizedVideoDate < dateRange.startDate
             ) {
-              isInRange = false;
+              isInDateRange = false;
             }
-
-            if (isInRange && dateRange.endDate) {
+            if (isInDateRange && dateRange.endDate) {
               const adjustedEndDate = new Date(dateRange.endDate);
               adjustedEndDate.setHours(23, 59, 59, 999);
               if (normalizedVideoDate > adjustedEndDate) {
-                isInRange = false;
+                isInDateRange = false;
               }
             }
+          }
 
-            if (isInRange) {
-              videosInRangeInThisPage++;
-              allVideos.push(video);
-            }
-          });
-        } else {
-          allVideos.push(...data.data.videos);
-        }
+          let hasMatchingHashtag = !applyHashtagFilter;
+          if (applyHashtagFilter && isInDateRange) {
+            const videoTitleLower = video.title?.toLowerCase() || '';
+            hasMatchingHashtag = normalizedHashtags.some((tag) =>
+              videoTitleLower.includes(tag),
+            );
+          }
 
-        if (dateRange && videosInRangeInThisPage === 0) {
-          consecutivePagesWithNoMatchingVideos++;
-        } else if (dateRange) {
-          foundVideosInRange = true;
-          consecutivePagesWithNoMatchingVideos = 0;
+          if (isInDateRange && hasMatchingHashtag) {
+            videosInRangeInThisPage++;
+            videosToAdd.push(video);
+          }
+        });
+
+        allVideos.push(...videosToAdd);
+
+        if (dateRange) {
+          if (videosInRangeInThisPage === 0) {
+            consecutivePagesWithNoMatchingVideos++;
+          } else {
+            foundVideosInRange = true;
+            consecutivePagesWithNoMatchingVideos = 0;
+          }
+
+          if (
+            foundVideosInRange &&
+            consecutivePagesWithNoMatchingVideos >= MAX_PAGES_WITHOUT_MATCHES
+          ) {
+            break;
+          }
         }
 
         currentCursor = parseInt(data.data.cursor, 10);
-
         hasMore = data.data.has_more && currentCursor > 0;
-        if (
-          dateRange &&
-          foundVideosInRange &&
-          consecutivePagesWithNoMatchingVideos >= MAX_PAGES_WITHOUT_MATCHES
-        ) {
-          console.log(
-            `Se detiene la búsqueda después de ${MAX_PAGES_WITHOUT_MATCHES} páginas sin videos que coincidan con el rango de fechas`,
-          );
-          break;
-        }
-
         pageCount++;
       } catch (error) {
         console.error('Error al procesar la paginación:', error);

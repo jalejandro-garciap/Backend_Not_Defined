@@ -139,6 +139,7 @@ export class ManagerController {
               reportFormat,
               startDate,
               endDate,
+              dto.hashtags,
             )
           : socialMedia === 'instagram'
             ? await this.multiUserReportService.generateMultiUserInstagramReport(
@@ -146,12 +147,14 @@ export class ManagerController {
                 reportFormat,
                 startDate,
                 endDate,
+                dto.hashtags,
               )
             : await this.multiUserReportService.generateMultiUserYoutubeReport(
                 dto.streamerIds,
                 reportFormat,
                 startDate,
                 endDate,
+                dto.hashtags,
               );
 
       if (reportFormat === ReportFormat.CSV) {

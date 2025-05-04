@@ -9,9 +9,8 @@ import { YoutubeService } from 'src/routes/youtube/services/youtube.service';
 @Injectable()
 export class MultiUserReportService {
   constructor(
-    @Inject() private readonly prisma: PrismaService,
+    @Inject() private readonly prismaService: PrismaService,
     @Inject() private readonly youtubeService: YoutubeService,
-    private readonly prismaService: PrismaService,
     private readonly tiktokService: TiktokService,
     private readonly instagramService: InstagramService,
     private readonly reportService: ReportService,
@@ -22,6 +21,7 @@ export class MultiUserReportService {
     format: ReportFormat = ReportFormat.PDF,
     startDate?: Date,
     endDate?: Date,
+    hashtags?: string[],
   ): Promise<Buffer> {
     const dateRange =
       startDate || endDate
@@ -30,6 +30,7 @@ export class MultiUserReportService {
             endDate,
           }
         : undefined;
+    const applyHashtagFilter = dateRange && hashtags && hashtags.length > 0;
 
     const users = await this.prismaService.user.findMany({
       where: {
@@ -58,6 +59,7 @@ export class MultiUserReportService {
       const videos = await this.tiktokService.getAllTiktokVideos(
         accessToken,
         dateRange,
+        applyHashtagFilter ? hashtags : undefined,
         5,
       );
       const videosWithUserInfo = videos.map((video) => ({
@@ -77,7 +79,7 @@ export class MultiUserReportService {
 
     if (combinedVideos.length === 0) {
       throw new Error(
-        'No se encontraron videos para el rango de fechas seleccionado',
+        'No se encontraron videos que coincidan con los criterios seleccionados',
       );
     }
 
@@ -98,6 +100,9 @@ export class MultiUserReportService {
         reportSubtitle += 'Actual';
       }
     }
+    if (applyHashtagFilter) {
+      reportSubtitle += ` | Hashtags: ${hashtags.join(', ')}`;
+    }
 
     return this.reportService.generateMultiUserTikTokReport(
       combinedVideos,
@@ -113,6 +118,7 @@ export class MultiUserReportService {
     format: ReportFormat = ReportFormat.PDF,
     startDate?: Date,
     endDate?: Date,
+    hashtags?: string[],
   ): Promise<Buffer> {
     const dateRange =
       startDate || endDate
@@ -121,6 +127,7 @@ export class MultiUserReportService {
             endDate,
           }
         : undefined;
+    const applyHashtagFilter = dateRange && hashtags && hashtags.length > 0;
 
     const users = await this.prismaService.user.findMany({
       where: {
@@ -153,6 +160,7 @@ export class MultiUserReportService {
         await this.instagramService.getAllPostsMetricsWithDateFilter(
           accessToken,
           dateRange,
+          applyHashtagFilter ? hashtags : undefined,
         );
 
       const mediaWithUserInfo = media.map((mediaItem) => ({
@@ -172,7 +180,7 @@ export class MultiUserReportService {
 
     if (combinedMedia.length === 0) {
       throw new Error(
-        'No se encontraron publicaciones para el rango de fechas seleccionado',
+        'No se encontraron publicaciones que coincidan con los criterios seleccionados',
       );
     }
 
@@ -194,6 +202,9 @@ export class MultiUserReportService {
         reportSubtitle += 'Actual';
       }
     }
+    if (applyHashtagFilter) {
+      reportSubtitle += ` | Hashtags: ${hashtags.join(', ')}`;
+    }
 
     return this.reportService.generateMultiUserInstagramReport(
       combinedMedia,
@@ -209,10 +220,11 @@ export class MultiUserReportService {
     format: ReportFormat,
     startDate?: Date,
     endDate?: Date,
+    hashtags?: string[],
   ): Promise<Buffer> {
     const dateRange = startDate || endDate ? { startDate, endDate } : undefined;
+    const applyHashtagFilter = dateRange && hashtags && hashtags.length > 0;
 
-    // load only enabled YouTube tokens
     const users = await this.prismaService.user.findMany({
       where: { id: { in: userIds } },
       include: {
@@ -233,10 +245,12 @@ export class MultiUserReportService {
         const publishedAfter = dateRange?.startDate?.toISOString();
         const publishedBefore = dateRange?.endDate?.toISOString();
 
+        // Pass hashtags only if dateRange is present
         const allMetrics = await this.youtubeService.getAllVideoMetrics(
           token,
           publishedAfter,
           publishedBefore,
+          applyHashtagFilter ? hashtags : undefined,
         );
 
         return allMetrics.map((m) => ({
@@ -252,11 +266,10 @@ export class MultiUserReportService {
     const combined = metricsArrays.flat();
     if (combined.length === 0) {
       throw new Error(
-        'No se encontraron videos para el rango de fechas seleccionado',
+        'No se encontraron videos que coincidan con los criterios seleccionados',
       );
     }
 
-    // build title/subtitle
     let reportTitle = 'Informe YouTube Multi-Usuario';
     let reportSubtitle = 'Informe de rendimiento de videos de YouTube';
     if (startDate || endDate) {
@@ -264,8 +277,10 @@ export class MultiUserReportService {
         startDate ? this.formatDateForTitle(startDate) : 'Inicio'
       } a ${endDate ? this.formatDateForTitle(endDate) : 'Actual'}`;
     }
+    if (applyHashtagFilter) {
+      reportSubtitle += ` | Hashtags: ${hashtags.join(', ')}`;
+    }
 
-    // delegate to ReportService
     return this.reportService.generateMultiUserYoutubeReport(
       combined,
       usersWithYoutube,

@@ -95,6 +95,7 @@ export class InstagramService {
   async getUserMediaWithDateFilter(
     accessToken: string,
     dateRange?: { startDate?: Date; endDate?: Date },
+    hashtags?: string[], // Add hashtags parameter
   ): Promise<any[]> {
     const url = `https://graph.instagram.com/me/media`;
     const params: {
@@ -154,17 +155,14 @@ export class InstagramService {
     }
 
     let filteredMedia = allMedia;
+
+    // 1. Filter by Date Range
     if (dateRange && (dateRange.startDate || dateRange.endDate)) {
-      filteredMedia = allMedia.filter((media) => {
+      filteredMedia = filteredMedia.filter((media) => {
         const mediaDate = new Date(media.timestamp);
         let isInRange = true;
-        const mediaHours = mediaDate.setHours(0, 0, 0, 0);
-        const mediaDateUTC = new Date(mediaHours);
-
-        const year = mediaDateUTC.getUTCFullYear();
-        const month = mediaDateUTC.getUTCMonth();
-        const day = mediaDateUTC.getUTCDate();
-        const normalizedMediaDate = new Date(Date.UTC(year, month, day));
+        // Normalize media date to UTC day start
+        const normalizedMediaDate = this.normalizeToUTCDay(mediaDate);
 
         if (dateRange.startDate) {
           const startDate = this.normalizeToUTCDay(dateRange.startDate);
@@ -172,15 +170,26 @@ export class InstagramService {
             isInRange = false;
           }
         }
-        
+
         if (isInRange && dateRange.endDate) {
+          // Normalize end date to UTC day end for inclusive check
           const endDate = this.normalizeToUTCDay(dateRange.endDate, true);
           if (normalizedMediaDate > endDate) {
             isInRange = false;
           }
         }
-
         return isInRange;
+      });
+    }
+
+    // 2. Filter by Hashtags (only if dateRange was provided)
+    if (dateRange && hashtags && hashtags.length > 0) {
+      const normalizedHashtags = hashtags.map((tag) =>
+        tag.startsWith('#') ? tag.toLowerCase() : `#${tag.toLowerCase()}`,
+      );
+      filteredMedia = filteredMedia.filter((media) => {
+        const captionLower = media.caption?.toLowerCase() || '';
+        return normalizedHashtags.some((tag) => captionLower.includes(tag));
       });
     }
 
@@ -230,11 +239,13 @@ export class InstagramService {
   async getAllPostsMetricsWithDateFilter(
     accessToken: string,
     dateRange?: { startDate?: Date; endDate?: Date },
+    hashtags?: string[],
   ): Promise<any[]> {
     const userData = await this.getUserData(accessToken);
     const mediaItems = await this.getUserMediaWithDateFilter(
       accessToken,
       dateRange,
+      hashtags,
     );
 
     if (mediaItems.length === 0) {

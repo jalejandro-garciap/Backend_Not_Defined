@@ -122,8 +122,9 @@ export class YoutubeService {
   // 4. Función consolidada que obtiene las métricas de todos los videos (todas las páginas)
   async getAllVideoMetrics(
     accessToken: string,
-    publishedAfter?: string,
-    publishedBefore?: string,
+    publishedAfter?: string, // Represents dateRange start
+    publishedBefore?: string, // Represents dateRange end
+    hashtags?: string[], // Add hashtags parameter
   ): Promise<YoutubeVideoMetrics[]> {
     // 1. Obtener el channelId del usuario autenticado
     const channelData = await this.getChannelData(accessToken, '');
@@ -139,7 +140,7 @@ export class YoutubeService {
         accessToken,
         channelId,
         pageToken,
-        publishedAfter,
+        publishedAfter, // Pass date range filters
         publishedBefore,
       );
       allVideos = allVideos.concat(items);
@@ -158,39 +159,36 @@ export class YoutubeService {
     }
 
     // d) Obtener datos del canal (para el número de suscriptores)
-    const subscribersCount =
-      channelData &&
-      channelData.statistics &&
-      channelData.statistics.subscriberCount
-        ? Number(channelData.statistics.subscriberCount)
-        : 0;
+    const subscribersCount = channelData?.statistics?.subscriberCount
+      ? Number(channelData.statistics.subscriberCount)
+      : 0;
 
     // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
-    const metrics: YoutubeVideoMetrics[] = videosDetails.map((video) => {
+    let metrics: YoutubeVideoMetrics[] = videosDetails.map((video) => {
       const snippet = video.snippet;
       const statistics = video.statistics;
 
-      const viewCount = Number(statistics.viewCount) || 0;
-      const likes = Number(statistics.likeCount) || 0;
-      const comments = Number(statistics.commentCount) || 0;
-      // Los siguientes datos no están disponibles en la Data API v3
+      const viewCount = Number(statistics?.viewCount) || 0;
+      const likes = Number(statistics?.likeCount) || 0;
+      const comments = Number(statistics?.commentCount) || 0;
+      // YouTube Data API v3 doesn't provide shares, saved, or viewing time directly
       const shares = 0;
       const saved = 0;
       const viewing_time_total = null;
       const viewing_time_avg = null;
 
-      // Se usará viewCount como aproximación de reach
-      const reach = viewCount;
-      const impressions = null;
+      // Approximations
+      const reach = viewCount; // Using views as reach approximation
+      const impressions = null; // Not available
       const engagement = likes + comments + shares + saved;
       const engagement_rate = reach > 0 ? engagement / reach : 0;
 
       return {
-        creator: snippet.channelTitle,
-        title: snippet.title,
+        creator: snippet?.channelTitle || 'Unknown',
+        title: snippet?.title || 'No Title',
         social_media: 'youtube',
         permalink: `https://www.youtube.com/watch?v=${video.id}`,
-        description: snippet.description || '',
+        description: snippet?.description || '',
         followers_count: subscribersCount,
         video_views: viewCount,
         reach: reach,
@@ -203,9 +201,27 @@ export class YoutubeService {
         viewing_time_avg: viewing_time_avg,
         engagement: engagement,
         engagement_rate: engagement_rate,
-        createdAt: new Date(snippet.publishedAt),
+        createdAt: snippet?.publishedAt
+          ? new Date(snippet.publishedAt)
+          : new Date(),
+        tags: snippet?.tags || [],
       };
     });
+
+    const applyHashtagFilter =
+      (publishedAfter || publishedBefore) && hashtags && hashtags.length > 0;
+    if (applyHashtagFilter) {
+      const normalizedHashtags = hashtags.map((tag) =>
+        tag.startsWith('#') ? tag.toLowerCase() : `#${tag.toLowerCase()}`,
+      );
+      metrics = metrics.filter((metric) => {
+        const descriptionLower = metric.description.toLowerCase();
+        const titleLower = metric.title.toLowerCase();
+        return normalizedHashtags.some(
+          (tag) => descriptionLower.includes(tag) || titleLower.includes(tag),
+        );
+      });
+    }
 
     return metrics;
   }
