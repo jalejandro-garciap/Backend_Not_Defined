@@ -10,6 +10,11 @@ export interface ReportData {
     totalDuration?: number; // Opcional para Instagram
     averageEngagementRate: number;
     totalSaved?: number;
+    // Campos para YouTube Analytics
+    totalEstimatedMinutesWatched?: number;
+    totalSubscribersGained?: number;
+    totalSubscribersLost?: number;
+    averageViewDuration?: number;
   };
   videos: ReportDataMedia[];
   users?: UserMetrics[];
@@ -21,6 +26,7 @@ export interface ReportData {
     userComparisonBase64?: string;
   };
   isInstagram?: boolean; // Bandera para distinguir el tipo de reporte
+  isYoutube?: boolean; // Bandera para distinguir el tipo de reporte
 }
 
 export interface UserMetrics {
@@ -33,6 +39,11 @@ export interface UserMetrics {
   totalComments: number;
   totalSaved?: number; // Solo para Instagram
   averageEngagement: number;
+  // Campos para YouTube Analytics
+  totalEstimatedMinutesWatched?: number;
+  totalSubscribersGained?: number;
+  totalSubscribersLost?: number;
+  averageViewDuration?: number;
 }
 
 export interface ReportDataMedia {
@@ -52,6 +63,16 @@ export interface ReportDataMedia {
   username?: string;
   mediaType?: string; // Solo para Instagram
   mediaUrl?: string; // Solo para Instagram
+  // Campos para YouTube Analytics
+  annotationClickThroughRate?: number;
+  annotationCloseRate?: number;
+  averageViewDuration?: number;
+  dislikes?: number;
+  estimatedMinutesWatched?: number;
+  estimatedRevenue?: number;
+  subscribersGained?: number;
+  subscribersLost?: number;
+  viewerPercentage?: any;
 }
 
 export enum ReportFormat {

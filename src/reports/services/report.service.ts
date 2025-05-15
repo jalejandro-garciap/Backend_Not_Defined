@@ -288,6 +288,17 @@ export class ReportService {
       userId: item.user.id,
       username: item.user.username,
       createdAt: item.createdAt, // ← use original publish date
+      
+      // YouTube Analytics API fields
+      annotationClickThroughRate: item.annotationClickThroughRate || null,
+      annotationCloseRate: item.annotationCloseRate || null,
+      averageViewDuration: item.averageViewDuration || null,
+      dislikes: item.dislikes || null,
+      estimatedMinutesWatched: item.estimatedMinutesWatched || null,
+      estimatedRevenue: item.estimatedRevenue || null,
+      subscribersGained: item.subscribersGained || null,
+      subscribersLost: item.subscribersLost || null,
+      viewerPercentage: item.viewerPercentage || null,
     }));
 
     const sorted = [...processed].sort((a, b) => b.views - a.views);
@@ -301,6 +312,25 @@ export class ReportService {
     const averageEngagementRate =
       processed.length > 0
         ? processed.reduce((sum, i) => sum + i.engagementRate, 0) /
+          processed.length
+        : 0;
+    
+    // Nuevos totales de YouTube Analytics
+    const totalEstimatedMinutesWatched = processed.reduce(
+      (sum, i) => sum + (i.estimatedMinutesWatched || 0), 
+      0
+    );
+    const totalSubscribersGained = processed.reduce(
+      (sum, i) => sum + (i.subscribersGained || 0), 
+      0
+    );
+    const totalSubscribersLost = processed.reduce(
+      (sum, i) => sum + (i.subscribersLost || 0), 
+      0
+    );
+    const averageViewDuration = 
+      processed.length > 0
+        ? processed.reduce((sum, i) => sum + (i.averageViewDuration || 0), 0) /
           processed.length
         : 0;
 
@@ -319,6 +349,24 @@ export class ReportService {
         averageEngagement:
           userItems.length > 0
             ? userItems.reduce((s, x) => s + x.engagementRate, 0) /
+              userItems.length
+            : 0,
+        // Nuevos campos por usuario
+        totalEstimatedMinutesWatched: userItems.reduce(
+          (s, x) => s + (x.estimatedMinutesWatched || 0), 
+          0
+        ),
+        totalSubscribersGained: userItems.reduce(
+          (s, x) => s + (x.subscribersGained || 0), 
+          0
+        ),
+        totalSubscribersLost: userItems.reduce(
+          (s, x) => s + (x.subscribersLost || 0), 
+          0
+        ),
+        averageViewDuration:
+          userItems.length > 0
+            ? userItems.reduce((s, x) => s + (x.averageViewDuration || 0), 0) /
               userItems.length
             : 0,
       };
@@ -346,6 +394,11 @@ export class ReportService {
         totalComments,
         totalSaved,
         averageEngagementRate,
+        // Nuevos campos de YouTube Analytics
+        totalEstimatedMinutesWatched,
+        totalSubscribersGained,
+        totalSubscribersLost,
+        averageViewDuration,
       },
       videos: processed,
       users: userMetrics,
@@ -356,6 +409,7 @@ export class ReportService {
         engagementComparisonBase64,
         userComparisonBase64,
       },
+      isYoutube: true, // Bandera para distinguir el tipo de reporte
     };
 
     return format === ReportFormat.CSV

@@ -84,12 +84,15 @@ export class PdfService implements IReportGenerator {
 
     const metricsY = height - 320;
     const metricBoxWidth = width - 100;
+    
+    // Ajustar altura de la caja de métricas si es YouTube
+    const boxHeight = data.isYoutube ? 200 : 130;
 
     page.drawRectangle({
       x: 50,
-      y: metricsY - 140,
+      y: metricsY - boxHeight - 10,
       width: metricBoxWidth,
-      height: 130,
+      height: boxHeight,
       borderColor: rgb(0.8, 0.8, 0.8),
       borderWidth: 1,
       color: rgb(0.97, 0.97, 0.97),
@@ -117,6 +120,26 @@ export class PdfService implements IReportGenerator {
         'Publicaciones guardadas:',
         data.metrics.totalSaved?.toLocaleString('es-ES') || '0',
       ]);
+    } else if (data.isYoutube) {
+      // Para YouTube, agregar métricas de YouTube Analytics
+      metrics.push([
+        'Tiempo visto (min):',
+        data.metrics.totalEstimatedMinutesWatched?.toLocaleString('es-ES') || '0',
+      ]);
+      
+      // Agregar métricas adicionales para YouTube
+      metrics.push([
+        'Duración media (s):',
+        data.metrics.averageViewDuration?.toFixed(2) || '0',
+      ]);
+      metrics.push([
+        'Suscriptores ganados:',
+        data.metrics.totalSubscribersGained?.toLocaleString('es-ES') || '0',
+      ]);
+      metrics.push([
+        'Suscriptores perdidos:',
+        data.metrics.totalSubscribersLost?.toLocaleString('es-ES') || '0',
+      ]);
     } else {
       metrics.push([
         'Duración total (s):',
@@ -126,7 +149,10 @@ export class PdfService implements IReportGenerator {
 
     const colWidth = metricBoxWidth / 2;
 
-    for (let i = 0; i < 3; i++) {
+    // Ajustar el bucle para mostrar 3 o 5 métricas, dependiendo del tipo
+    const numMetricsPerColumn = data.isYoutube ? 5 : 3;
+    
+    for (let i = 0; i < Math.min(numMetricsPerColumn, metrics.length); i++) {
       page.drawText(metrics[i][0], {
         x: 70,
         y: metricsY - 30 - i * 30,
@@ -143,15 +169,17 @@ export class PdfService implements IReportGenerator {
       });
     }
 
-    for (let i = 0; i < 3; i++) {
-      page.drawText(metrics[i + 3][0], {
+    // Mostrar el resto de métricas en la segunda columna
+    const remainingMetrics = Math.min(metrics.length - numMetricsPerColumn, numMetricsPerColumn);
+    for (let i = 0; i < remainingMetrics; i++) {
+      page.drawText(metrics[i + numMetricsPerColumn][0], {
         x: 70 + colWidth,
         y: metricsY - 30 - i * 30,
         size: 12,
         font,
       });
 
-      page.drawText(metrics[i + 3][1], {
+      page.drawText(metrics[i + numMetricsPerColumn][1], {
         x: 200 + colWidth,
         y: metricsY - 30 - i * 30,
         size: 12,

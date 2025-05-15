@@ -10,11 +10,23 @@ export interface YoutubeVideoMetrics {
   impressions: number | null;        // Impresiones (no disponible con YouTube Data API)
   likes: number;                     // Número de likes
   comments: number;                  // Número de comentarios
-  shares: number;                    // Shares (no disponible en Data API; se puede obtener vía Analytics)
+  shares: number;                    // Shares (no disponible en Data API; se obtiene vía Analytics)
   saved: number;                     // Guardados (no disponible)
   viewing_time_total: number | null; // Tiempo total de visualización (se obtiene vía Analytics)
   viewing_time_avg: number | null;   // Tiempo promedio de visualización (se obtiene vía Analytics)
   engagement: number;                // Engagement total (por ejemplo, likes + comments + shares; sin saved)
   engagement_rate: number;           // Engagement rate (engagement / reach)
   createdAt: Date;                   // Fecha de publicación (timestamp)
+  tags?: string[];                   // Etiquetas del video
+  
+  // YouTube Analytics API fields
+  annotationClickThroughRate: number | null;  // Tasa de clics en anotaciones
+  annotationCloseRate: number | null;         // Tasa de cierre de anotaciones
+  averageViewDuration: number | null;         // Duración media de visualización
+  dislikes: number | null;                    // Número de dislikes (ya no disponible públicamente, pero puede estar en Analytics)
+  estimatedMinutesWatched: number | null;     // Minutos estimados de visualización
+  estimatedRevenue: number | null;            // Ingresos estimados
+  subscribersGained: number | null;           // Suscriptores ganados
+  subscribersLost: number | null;             // Suscriptores perdidos
+  viewerPercentage: any;                      // Porcentaje de espectadores (demografía)
 }
