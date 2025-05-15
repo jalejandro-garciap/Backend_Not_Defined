@@ -62,16 +62,26 @@ export class YoutubeController {
 
       // 2. Verificar si podemos acceder a YouTube Analytics
       try {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30);
+        // Usar fechas pasadas, no futuras
         const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30); // 30 días atrás
 
-        const analyticsCheckResponse = await firstValueFrom(
-          this.httpService.get('https://youtubeanalytics.googleapis.com/v2/availableReports', {
+        const startDateStr = startDate.toISOString().split('T')[0]; // formato YYYY-MM-DD
+        const endDateStr = endDate.toISOString().split('T')[0]; // formato YYYY-MM-DD
+        
+        console.log(`Verificando acceso a YouTube Analytics con fechas: ${startDateStr} a ${endDateStr}`);
+
+        // Intentar usar un endpoint más simple primero
+        const channelDataResponse = await firstValueFrom(
+          this.httpService.get('https://youtubeanalytics.googleapis.com/v2/reports', {
             headers: { Authorization: `Bearer ${accessToken}` },
             params: { 
-              startDate: startDate.toISOString().split('T')[0],
-              endDate: endDate.toISOString().split('T')[0]
+              ids: 'channel==MINE',
+              startDate: startDateStr,
+              endDate: endDateStr,
+              metrics: 'views,likes,dislikes,comments',
+              dimensions: 'day'
             }
           })
         );
@@ -81,7 +91,7 @@ export class YoutubeController {
           message: 'Acceso a YouTube Analytics verificado correctamente',
           data: {
             analyticsAccess: true,
-            availableReports: analyticsCheckResponse.data
+            channelData: channelDataResponse.data
           }
         });
       } catch (error) {

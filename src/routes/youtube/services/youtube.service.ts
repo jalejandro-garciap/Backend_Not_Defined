@@ -120,38 +120,37 @@ export class YoutubeService {
   ): Promise<any> {
     const url = 'https://youtubeanalytics.googleapis.com/v2/reports';
     const params = {
-      dimensions: 'video',
-      endDate,
       ids: 'channel==MINE',
-      metrics: 'annotationClickThroughRate,annotationCloseRate,averageViewDuration,comments,dislikes,estimatedMinutesWatched,estimatedRevenue,likes,shares,subscribersGained,subscribersLost,views',
-      filters: `video==${videoId}`,
       startDate,
+      endDate,
+      metrics: 'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
+      dimensions: 'video',
+      filters: `video==${videoId}`,
     };
 
     console.log('⚠️ Intentando obtener datos de YouTube Analytics - asegúrate de tener habilitado YouTube Analytics API en la consola de Google Cloud.');
     console.log('📊 URL de YouTube Analytics:', url);
     console.log('🔑 Parámetros:', JSON.stringify(params));
+    console.log('🎥 Video ID:', videoId);
 
     try {
-      // Intentamos primero hacer una llamada a la API para verificar si está disponible
-      const testResponse = await this.httpService
-        .get('https://youtubeanalytics.googleapis.com/v2/availableReports', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          params: { startDate, endDate },
-        })
-        .toPromise()
-        .catch(error => {
-          console.error('❌ Error verificando disponibilidad de YouTube Analytics:', 
-            error.response?.data || error.message || error);
-          return null;
-        });
-        
-      if (!testResponse) {
-        console.error('❌ La API de YouTube Analytics no está disponible o no está habilitada para esta cuenta');
-        return {};
+      // Verificar primero que las fechas sean válidas
+      if (new Date(startDate) > new Date() || new Date(endDate) > new Date()) {
+        console.warn('⚠️ Fechas de consulta en el futuro. Ajustando al día de hoy.');
+        const today = new Date().toISOString().split('T')[0];
+        if (new Date(endDate) > new Date()) {
+          params.endDate = today;
+        }
+        if (new Date(startDate) > new Date()) {
+          params.startDate = today;
+          // Ajustar startDate a 30 días atrás si es necesario
+          const startDateObj = new Date();
+          startDateObj.setDate(startDateObj.getDate() - 30);
+          params.startDate = startDateObj.toISOString().split('T')[0];
+        }
       }
       
-      console.log('✅ YouTube Analytics API está disponible');
+      console.log(`Consultando analytics con fechas ajustadas: ${params.startDate} a ${params.endDate}`);
 
       const { data } = await firstValueFrom(
         this.httpService
@@ -168,13 +167,46 @@ export class YoutubeService {
           ),
       );
 
-      // Get viewer demographics data
-      const demographicsData = await this.getViewerDemographics(
-        accessToken,
-        videoId,
-        startDate,
-        endDate,
-      );
+      // Si no hay datos para ese video, intentar una consulta general del canal
+      if (!data || !data.rows || data.rows.length === 0) {
+        console.warn(`⚠️ No hay datos específicos para el video ${videoId}. Intentando obtener datos generales del canal.`);
+        
+        const channelParams = {
+          ids: 'channel==MINE',
+          startDate: params.startDate,
+          endDate: params.endDate,
+          metrics: 'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
+        };
+        
+        try {
+          const channelData = await firstValueFrom(
+            this.httpService
+              .get(url, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                params: channelParams,
+              })
+              .pipe(
+                catchError((error) => {
+                  console.error('❌ Error fetching channel analytics:', error.response?.data || error);
+                  return throwError(() => ({ data: { rows: [] } }));
+                }),
+              ),
+          );
+          
+          if (channelData && channelData.data && channelData.data.rows && channelData.data.rows.length > 0) {
+            const analyticsData = {};
+            channelData.data.columnHeaders.forEach((header, index) => {
+              analyticsData[header.name] = channelData.data.rows[0][index];
+            });
+            console.log('✅ Usando datos generales del canal para este video');
+            return analyticsData;
+          }
+        } catch (error) {
+          console.error('❌ Error al obtener datos generales del canal:', error);
+        }
+        
+        return {};
+      }
 
       // Process the analytics data
       if (data && data.rows && data.rows.length > 0) {
@@ -183,76 +215,15 @@ export class YoutubeService {
           analyticsData[header.name] = data.rows[0][index];
         });
 
-        console.log('✅ Datos de YouTube Analytics obtenidos correctamente');
-        return {
-          ...analyticsData,
-          viewerPercentage: demographicsData,
-        };
+        console.log('✅ Datos de YouTube Analytics obtenidos correctamente para el video');
+        return analyticsData;
       }
 
       console.warn('⚠️ No se encontraron datos de YouTube Analytics para este video');
-      return {
-        viewerPercentage: demographicsData,
-      };
+      return {};
     } catch (error) {
       console.error('❌ Failed to get video analytics:', error);
       // Devolver un objeto vacío en lugar de permitir que el error se propague
-      return {};
-    }
-  }
-
-  // 5. Obtiene datos demográficos de los espectadores
-  async getViewerDemographics(
-    accessToken: string,
-    videoId: string,
-    startDate: string,
-    endDate: string,
-  ): Promise<any> {
-    const url = 'https://youtubeanalytics.googleapis.com/v2/reports';
-    const params = {
-      dimensions: 'ageGroup,gender',
-      endDate,
-      ids: 'channel==MINE',
-      metrics: 'viewerPercentage',
-      filters: `video==${videoId}`,
-      startDate,
-    };
-
-    try {
-      const { data } = await firstValueFrom(
-        this.httpService
-          .get(url, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            params,
-          })
-          .pipe(
-            catchError((error) => {
-              console.error('Error fetching viewer demographics:', error.response?.data || error);
-              return throwError(() => new Error('Failed to fetch viewer demographics'));
-            }),
-          ),
-      );
-
-      if (data?.rows && data.rows.length > 0) {
-        // Transform the demographics data into a more usable format
-        const demographics = {};
-        data.rows.forEach((row) => {
-          const ageGroup = row[0];
-          const gender = row[1];
-          const percentage = row[2];
-          
-          if (!demographics[gender]) {
-            demographics[gender] = {};
-          }
-          demographics[gender][ageGroup] = percentage;
-        });
-        
-        return demographics;
-      }
-      
-      return {};
-    } catch (error) {
-      console.error('Failed to get viewer demographics:', error);
       return {};
     }
   }
@@ -318,6 +289,18 @@ export class YoutubeService {
       ? new Date(publishedBefore).toISOString().split('T')[0] 
       : new Date().toISOString().split('T')[0]; // Today
 
+    // Verificar que las fechas no estén en el futuro
+    const now = new Date();
+    const endDateObj = new Date(endDate);
+    const startDateObj = new Date(startDate);
+    
+    const adjustedEndDate = endDateObj > now ? now.toISOString().split('T')[0] : endDate;
+    const adjustedStartDate = startDateObj > now ? 
+      new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+      startDate;
+      
+    console.log(`Fechas ajustadas para analytics: ${adjustedStartDate} a ${adjustedEndDate}`);
+
     // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
     let metrics: YoutubeVideoMetrics[] = [];
     
@@ -339,7 +322,6 @@ export class YoutubeService {
         estimatedRevenue?: number;
         subscribersGained?: number;
         subscribersLost?: number;
-        viewerPercentage?: any;
       } = {};
       
       if (analyticsAccessible) {
@@ -347,8 +329,8 @@ export class YoutubeService {
           analyticsData = await this.getVideoAnalytics(
             accessToken,
             video.id,
-            startDate,
-            endDate,
+            adjustedStartDate,
+            adjustedEndDate,
           );
           
           // Si no hay datos y es el primer video, probablemente no tengamos acceso
@@ -410,7 +392,7 @@ export class YoutubeService {
         estimatedRevenue: analyticsData.estimatedRevenue || null,
         subscribersGained: analyticsData.subscribersGained || null,
         subscribersLost: analyticsData.subscribersLost || null,
-        viewerPercentage: analyticsData.viewerPercentage || null,
+        viewerPercentage: null // Ya no obtenemos este dato
       });
     }
 
