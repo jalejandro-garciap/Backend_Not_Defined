@@ -16,12 +16,96 @@ import { SocialMedia, User } from '@prisma/client';
 import { Response } from 'express';
 import { MultiUserReportService } from 'src/reports/services/multi-user-report.service';
 import { ReportFormat } from 'src/reports/interfaces/report-data.interfaces';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Controller('youtube')
 export class YoutubeController {
   constructor(
     @Inject() private readonly multiUserReportService: MultiUserReportService,
+    @Inject() private readonly youtubeService: YoutubeService,
+    private readonly httpService: HttpService,
   ) {}
+
+  @Get('check-analytics')
+  @UseGuards(AuthenticatedGuard)
+  async checkAnalyticsAccess(
+    @AuthUser() user: User & { social_medias: SocialMedia[] },
+    @Res() res: Response,
+  ) {
+    try {
+      const accessToken = user.social_medias.find(
+        (socialMedia) => socialMedia.social_media_name === 'youtube',
+      )?.access_token;
+
+      if (!accessToken) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'No se ha conectado una cuenta de YouTube' 
+        });
+      }
+
+      // 1. Verificar información del token
+      console.log('Verificando información del token de YouTube...');
+      try {
+        const tokenInfoResponse = await firstValueFrom(
+          this.httpService.get('https://www.googleapis.com/oauth2/v1/tokeninfo', {
+            params: { access_token: accessToken }
+          })
+        );
+        
+        console.log('Información del token:', tokenInfoResponse.data);
+        console.log('Scopes:', tokenInfoResponse.data.scope);
+      } catch (error) {
+        console.error('Error al verificar el token:', error.response?.data || error);
+      }
+
+      // 2. Verificar si podemos acceder a YouTube Analytics
+      try {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        const endDate = new Date();
+
+        const analyticsCheckResponse = await firstValueFrom(
+          this.httpService.get('https://youtubeanalytics.googleapis.com/v2/availableReports', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params: { 
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0]
+            }
+          })
+        );
+
+        return res.json({
+          success: true,
+          message: 'Acceso a YouTube Analytics verificado correctamente',
+          data: {
+            analyticsAccess: true,
+            availableReports: analyticsCheckResponse.data
+          }
+        });
+      } catch (error) {
+        console.error('Error al verificar acceso a YouTube Analytics:', error.response?.data || error);
+        
+        return res.json({
+          success: false,
+          message: 'No se pudo acceder a YouTube Analytics',
+          error: error.response?.data || error.message,
+          data: { 
+            analyticsAccess: false,
+            reason: 'Es posible que necesites habilitar YouTube Analytics API en la consola de Google Cloud o volver a autorizar la aplicación con los permisos necesarios.'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error general en la verificación:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Error al verificar acceso a YouTube Analytics',
+        error: error.message
+      });
+    }
+  }
 
   // @Get('posts-metrics')
   // @UseGuards(AuthenticatedGuard)

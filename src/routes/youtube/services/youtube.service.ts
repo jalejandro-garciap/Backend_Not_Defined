@@ -128,7 +128,31 @@ export class YoutubeService {
       startDate,
     };
 
+    console.log('⚠️ Intentando obtener datos de YouTube Analytics - asegúrate de tener habilitado YouTube Analytics API en la consola de Google Cloud.');
+    console.log('📊 URL de YouTube Analytics:', url);
+    console.log('🔑 Parámetros:', JSON.stringify(params));
+
     try {
+      // Intentamos primero hacer una llamada a la API para verificar si está disponible
+      const testResponse = await this.httpService
+        .get('https://youtubeanalytics.googleapis.com/v2/availableReports', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { startDate, endDate },
+        })
+        .toPromise()
+        .catch(error => {
+          console.error('❌ Error verificando disponibilidad de YouTube Analytics:', 
+            error.response?.data || error.message || error);
+          return null;
+        });
+        
+      if (!testResponse) {
+        console.error('❌ La API de YouTube Analytics no está disponible o no está habilitada para esta cuenta');
+        return {};
+      }
+      
+      console.log('✅ YouTube Analytics API está disponible');
+
       const { data } = await firstValueFrom(
         this.httpService
           .get(url, {
@@ -137,7 +161,7 @@ export class YoutubeService {
           })
           .pipe(
             catchError((error) => {
-              console.error('Error fetching video analytics:', error.response?.data || error);
+              console.error('❌ Error fetching video analytics:', error.response?.data || error);
               // En lugar de lanzar una excepción, devolvemos un Observable que emitirá un objeto vacío
               return throwError(() => ({ data: { rows: [] } }));
             }),
@@ -159,17 +183,19 @@ export class YoutubeService {
           analyticsData[header.name] = data.rows[0][index];
         });
 
+        console.log('✅ Datos de YouTube Analytics obtenidos correctamente');
         return {
           ...analyticsData,
           viewerPercentage: demographicsData,
         };
       }
 
+      console.warn('⚠️ No se encontraron datos de YouTube Analytics para este video');
       return {
         viewerPercentage: demographicsData,
       };
     } catch (error) {
-      console.error('Failed to get video analytics:', error);
+      console.error('❌ Failed to get video analytics:', error);
       // Devolver un objeto vacío en lugar de permitir que el error se propague
       return {};
     }
