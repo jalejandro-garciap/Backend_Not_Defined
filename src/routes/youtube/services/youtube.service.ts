@@ -115,75 +115,9 @@ export class YoutubeService {
   async getVideoAnalytics(
     accessToken: string,
     videoId: string,
-    startDate?: string,
-    endDate?: string,
-    publishedAt?: string, // Fecha de publicación del video
+    startDate: string,
+    endDate: string,
   ): Promise<any> {
-    // Si no se proporcionan fechas, usar valores por defecto
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Para la fecha de inicio, consideramos:
-    // 1. La fecha proporcionada por el usuario
-    // 2. La fecha de publicación del video
-    // 3. 30 días atrás como último recurso
-    
-    let defaultStartDate;
-    if (publishedAt) {
-      // Si tenemos la fecha de publicación, usamos esa
-      const pubDate = new Date(publishedAt);
-      // Añadimos un día a la fecha de publicación (para asegurar que esté incluido)
-      pubDate.setDate(pubDate.getDate() + 1);
-      defaultStartDate = pubDate.toISOString().split('T')[0];
-      
-      console.log(`📅 Usando fecha basada en publicación para video de ${publishedAt}`);
-    } else {
-      // Caso por defecto: 30 días atrás
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      defaultStartDate = thirtyDaysAgo.toISOString().split('T')[0];
-    }
-    
-    // Usar fechas proporcionadas o valores por defecto
-    const useStartDate = startDate || defaultStartDate;
-    const useEndDate = endDate || today;
-    
-    // Verificar si las fechas están en el futuro
-    if (new Date(useEndDate) > new Date()) {
-      console.warn('⚠️ Fecha final en el futuro, ajustando a hoy');
-      endDate = today;
-    } else {
-      endDate = useEndDate;
-    }
-    
-    // La fecha de inicio no puede ser futura
-    if (new Date(useStartDate) > new Date()) {
-      console.warn('⚠️ Fecha inicial en el futuro, ajustando a 30 días atrás');
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      startDate = thirtyDaysAgo.toISOString().split('T')[0];
-    } else {
-      startDate = useStartDate;
-    }
-    
-    // Para videos muy antiguos, consultar un periodo razonable
-    const MAX_DATE_RANGE_DAYS = 90; // YouTube puede limitar consultas con rangos muy amplios
-    
-    const startDateObj = new Date(startDate);
-    const endDateObj = new Date(endDate);
-    
-    // Calcular la diferencia en días
-    const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays > MAX_DATE_RANGE_DAYS) {
-      console.warn(`⚠️ El rango de fechas es muy amplio (${diffDays} días). Limitando a ${MAX_DATE_RANGE_DAYS} días desde la fecha final.`);
-      // Ajustar la fecha de inicio para mantenerla dentro del límite
-      startDateObj.setTime(endDateObj.getTime() - (MAX_DATE_RANGE_DAYS * 24 * 60 * 60 * 1000));
-      startDate = startDateObj.toISOString().split('T')[0];
-    }
-    
-    console.log(`📅 Fechas finales para analytics: ${startDate} a ${endDate} (${diffDays} días)`);
-    
     const url = 'https://youtubeanalytics.googleapis.com/v2/reports';
     const params = {
       ids: 'channel==MINE',
@@ -194,12 +128,22 @@ export class YoutubeService {
       filters: `video==${videoId}`,
     };
 
-    console.log('⚠️ Intentando obtener datos de YouTube Analytics - asegúrate de tener habilitado YouTube Analytics API en la consola de Google Cloud.');
-    console.log('📊 URL de YouTube Analytics:', url);
-    console.log('🔑 Parámetros:', JSON.stringify(params));
-    console.log('🎥 Video ID:', videoId);
-
     try {
+      // Verificar primero que las fechas sean válidas
+      if (new Date(startDate) > new Date() || new Date(endDate) > new Date()) {
+        const today = new Date().toISOString().split('T')[0];
+        if (new Date(endDate) > new Date()) {
+          params.endDate = today;
+        }
+        if (new Date(startDate) > new Date()) {
+          params.startDate = today;
+          // Ajustar startDate a 30 días atrás si es necesario
+          const startDateObj = new Date();
+          startDateObj.setDate(startDateObj.getDate() - 30);
+          params.startDate = startDateObj.toISOString().split('T')[0];
+        }
+      }
+      
       const { data } = await firstValueFrom(
         this.httpService
           .get(url, {
@@ -216,13 +160,11 @@ export class YoutubeService {
       );
 
       // Si no hay datos para ese video, intentar una consulta general del canal
-      if (!data || !data.rows || data.rows.length === 0) {
-        console.warn(`⚠️ No hay datos específicos para el video ${videoId}. Intentando obtener datos generales del canal.`);
-        
+      if (!data || !data.rows || data.rows.length === 0) {        
         const channelParams = {
           ids: 'channel==MINE',
-          startDate,
-          endDate,
+          startDate: params.startDate,
+          endDate: params.endDate,
           metrics: 'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
         };
         
@@ -246,7 +188,6 @@ export class YoutubeService {
             channelData.data.columnHeaders.forEach((header, index) => {
               analyticsData[header.name] = channelData.data.rows[0][index];
             });
-            console.log('✅ Usando datos generales del canal para este video');
             return analyticsData;
           }
         } catch (error) {
@@ -263,11 +204,9 @@ export class YoutubeService {
           analyticsData[header.name] = data.rows[0][index];
         });
 
-        console.log('✅ Datos de YouTube Analytics obtenidos correctamente para el video');
         return analyticsData;
       }
-
-      console.warn('⚠️ No se encontraron datos de YouTube Analytics para este video');
+      
       return {};
     } catch (error) {
       console.error('❌ Failed to get video analytics:', error);
@@ -298,7 +237,6 @@ export class YoutubeService {
     }
     const channelId = channelData.id;
 
-    // 2. Obtener todos los videos del canal
     let allVideos: any[] = [];
     let pageToken: string | undefined = undefined;
     do {
@@ -316,7 +254,7 @@ export class YoutubeService {
     const videoIds = allVideos.map((video) => video.id.videoId).filter(Boolean);
     if (!videoIds.length) return [];
 
-    // 3. Obtener detalles de los videos en lotes de 50
+    // Procesar los IDs en lotes de 50
     const videosDetails: any[] = [];
     for (let i = 0; i < videoIds.length; i += 50) {
       const batchIds = videoIds.slice(i, i + 50);
@@ -324,26 +262,41 @@ export class YoutubeService {
       videosDetails.push(...details);
     }
 
-    // 4. Obtener datos del canal (para el número de suscriptores)
+    // d) Obtener datos del canal (para el número de suscriptores)
     const subscribersCount = channelData?.statistics?.subscriberCount
       ? Number(channelData.statistics.subscriberCount)
       : 0;
 
-    // 5. Preparar las fechas para Analytics (dejaremos que getVideoAnalytics maneje la validación)
-    const startDate = publishedAfter || undefined;
-    const endDate = publishedBefore || undefined;
+    // Define the date range for analytics
+    const startDate = publishedAfter 
+      ? new Date(publishedAfter).toISOString().split('T')[0] 
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Default to last 30 days
     
-    console.log(`⏱️ Fechas para consultas de analytics: ${startDate || 'no especificada'} a ${endDate || 'no especificada'}`);
+    const endDate = publishedBefore 
+      ? new Date(publishedBefore).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0]; // Today
 
-    // 6. Consolidar la información en base a la interfaz YoutubeVideoMetrics
+    // Verificar que las fechas no estén en el futuro
+    const now = new Date();
+    const endDateObj = new Date(endDate);
+    const startDateObj = new Date(startDate);
+    
+    const adjustedEndDate = endDateObj > now ? now.toISOString().split('T')[0] : endDate;
+    const adjustedStartDate = startDateObj > now ? 
+      new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+      startDate;
+      
+    // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
     let metrics: YoutubeVideoMetrics[] = [];
+    
+    // Flag para verificar si tenemos acceso a Analytics
     let analyticsAccessible = true;
     
     for (const video of videosDetails) {
       const snippet = video.snippet;
       const statistics = video.statistics;
       
-      // 7. Obtener datos de analytics para cada video
+      // Get analytics data for this video - Si es el primer video y falla, no intentamos con los demás
       let analyticsData: {
         shares?: number;
         estimatedMinutesWatched?: number;
@@ -361,40 +314,36 @@ export class YoutubeService {
           analyticsData = await this.getVideoAnalytics(
             accessToken,
             video.id,
-            startDate,
-            endDate,
-            snippet?.publishedAt
+            adjustedStartDate,
+            adjustedEndDate,
           );
           
-          // Si no hay datos de analytics y es el primer video, probablemente no tengamos acceso
+          // Si no hay datos y es el primer video, probablemente no tengamos acceso
           if (Object.keys(analyticsData).length === 0 && metrics.length === 0) {
-            console.warn('⚠️ No se pudo acceder a YouTube Analytics. Continuando solo con datos de la API de YouTube Data.');
             analyticsAccessible = false;
           }
         } catch (error) {
           analyticsAccessible = false;
-          console.error('❌ Error al obtener datos de YouTube Analytics:', error);
+          console.error('Error al obtener datos de YouTube Analytics:', error);
         }
       }
 
-      // 8. Consolida información básica del video
       const viewCount = Number(statistics?.viewCount) || 0;
       const likes = Number(statistics?.likeCount) || 0;
       const comments = Number(statistics?.commentCount) || 0;
       
-      // 9. Usa datos de analytics cuando estén disponibles
+      // Use analytics data when available, fallback to approximations
       const shares = analyticsData.shares || 0;
-      const saved = 0; // No disponible en YouTube
+      const saved = 0; // Not available
       const viewing_time_total = analyticsData.estimatedMinutesWatched || null;
       const viewing_time_avg = analyticsData.averageViewDuration || null;
 
-      // 10. Calcular métricas derivadas
-      const reach = viewCount; // Usando vistas como aproximación del alcance
-      const impressions = null; // No disponible directamente
+      // Approximations
+      const reach = viewCount; // Using views as reach approximation
+      const impressions = null; // Not available
       const engagement = likes + comments + shares + saved;
       const engagement_rate = reach > 0 ? engagement / reach : 0;
 
-      // 11. Construir el objeto de métricas
       metrics.push({
         creator: snippet?.channelTitle || 'Unknown',
         title: snippet?.title || 'No Title',
@@ -431,7 +380,6 @@ export class YoutubeService {
       });
     }
 
-    // 12. Aplicar filtro de hashtags si corresponde
     const applyHashtagFilter =
       (publishedAfter || publishedBefore) && hashtags && hashtags.length > 0;
     if (applyHashtagFilter) {

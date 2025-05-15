@@ -32,47 +32,6 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
     done: VerifyCallback,
   ): Promise<any> {
     try {
-      console.log('Perfil de YouTube recibido:', 
-        JSON.stringify({
-          id: profile.id,
-          displayName: profile.displayName,
-          emails: profile.emails,
-          photos: profile.photos,
-          _json: profile._json ? {
-            scopes: profile._json.scope
-          } : undefined
-        }, null, 2)
-      );
-      
-      // Verificar los scopes manualmente con una petición directa a la API de Google
-      try {
-        const axios = require('axios');
-        const tokenInfo = await axios.get('https://www.googleapis.com/oauth2/v1/tokeninfo', {
-          params: { access_token: accessToken }
-        });
-        
-        console.log('Token info completa:', tokenInfo.data);
-        
-        const grantedScopes = tokenInfo.data.scope ? tokenInfo.data.scope.split(' ') : [];
-        console.log('Scopes concedidos:', grantedScopes);
-        
-        // Verificar si tenemos los scopes necesarios
-        const requiredScopes = [
-          'https://www.googleapis.com/auth/youtube.readonly',
-          'https://www.googleapis.com/auth/yt-analytics.readonly'
-        ];
-        
-        const missingScopes = requiredScopes.filter(scope => !grantedScopes.includes(scope));
-        if (missingScopes.length > 0) {
-          console.warn('⚠️ Faltan permisos para YouTube Analytics:', missingScopes);
-          console.warn('⚠️ Es posible que algunas funcionalidades de analytics no estén disponibles');
-        } else {
-          console.log('✅ Todos los permisos necesarios están concedidos');
-        }
-      } catch (error) {
-        console.error('❌ Error al verificar el token de acceso:', error.response?.data || error.message);
-      }
-      
       const photo =
         profile.photos && profile.photos[0]
           ? profile.photos[0].value

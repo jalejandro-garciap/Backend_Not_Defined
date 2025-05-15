@@ -114,8 +114,6 @@ export class InstagramService {
     let nextUrl = url;
     let hasNextPage = true;
 
-    console.log(`Obteniendo publicaciones de Instagram...`);
-
     while (hasNextPage) {
       try {
         const { data } = await firstValueFrom(
@@ -131,9 +129,6 @@ export class InstagramService {
         );
 
         allMedia = [...allMedia, ...data.data];
-        console.log(
-          `Obtenidas ${data.data.length} publicaciones más. Total: ${allMedia.length}`,
-        );
 
         if (data.paging && data.paging.next) {
           nextUrl = data.paging.next;
@@ -143,9 +138,6 @@ export class InstagramService {
         }
 
         if (allMedia.length >= 100) {
-          console.log(
-            'Alcanzado el límite de 100 publicaciones, deteniendo la paginación',
-          );
           hasNextPage = false;
         }
       } catch (error) {
