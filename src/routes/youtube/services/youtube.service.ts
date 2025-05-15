@@ -138,7 +138,8 @@ export class YoutubeService {
           .pipe(
             catchError((error) => {
               console.error('Error fetching video analytics:', error.response?.data || error);
-              throw error.response?.data || error;
+              // En lugar de lanzar una excepción, devolvemos un Observable que emitirá un objeto vacío
+              return throwError(() => ({ data: { rows: [] } }));
             }),
           ),
       );
@@ -152,7 +153,7 @@ export class YoutubeService {
       );
 
       // Process the analytics data
-      if (data.rows && data.rows.length > 0) {
+      if (data && data.rows && data.rows.length > 0) {
         const analyticsData = {};
         data.columnHeaders.forEach((header, index) => {
           analyticsData[header.name] = data.rows[0][index];
@@ -169,6 +170,7 @@ export class YoutubeService {
       };
     } catch (error) {
       console.error('Failed to get video analytics:', error);
+      // Devolver un objeto vacío en lugar de permitir que el error se propague
       return {};
     }
   }
@@ -205,7 +207,7 @@ export class YoutubeService {
           ),
       );
 
-      if (data.rows && data.rows.length > 0) {
+      if (data?.rows && data.rows.length > 0) {
         // Transform the demographics data into a more usable format
         const demographics = {};
         data.rows.forEach((row) => {
@@ -293,17 +295,46 @@ export class YoutubeService {
     // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
     let metrics: YoutubeVideoMetrics[] = [];
     
+    // Flag para verificar si tenemos acceso a Analytics
+    let analyticsAccessible = true;
+    
     for (const video of videosDetails) {
       const snippet = video.snippet;
       const statistics = video.statistics;
       
-      // Get analytics data for this video
-      const analyticsData = await this.getVideoAnalytics(
-        accessToken,
-        video.id,
-        startDate,
-        endDate,
-      );
+      // Get analytics data for this video - Si es el primer video y falla, no intentamos con los demás
+      let analyticsData: {
+        shares?: number;
+        estimatedMinutesWatched?: number;
+        averageViewDuration?: number;
+        annotationClickThroughRate?: number;
+        annotationCloseRate?: number;
+        dislikes?: number;
+        estimatedRevenue?: number;
+        subscribersGained?: number;
+        subscribersLost?: number;
+        viewerPercentage?: any;
+      } = {};
+      
+      if (analyticsAccessible) {
+        try {
+          analyticsData = await this.getVideoAnalytics(
+            accessToken,
+            video.id,
+            startDate,
+            endDate,
+          );
+          
+          // Si no hay datos y es el primer video, probablemente no tengamos acceso
+          if (Object.keys(analyticsData).length === 0 && metrics.length === 0) {
+            console.warn('No se pudo acceder a YouTube Analytics. Continuando solo con datos de la API de YouTube Data.');
+            analyticsAccessible = false;
+          }
+        } catch (error) {
+          analyticsAccessible = false;
+          console.error('Error al obtener datos de YouTube Analytics:', error);
+        }
+      }
 
       const viewCount = Number(statistics?.viewCount) || 0;
       const likes = Number(statistics?.likeCount) || 0;

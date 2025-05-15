@@ -16,8 +16,10 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
       passReqToCallback: true,
       scope: [
         'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube',
         'https://www.googleapis.com/auth/yt-analytics.readonly',
-        'https://www.googleapis.com/auth/yt-analytics-monetary.readonly'
+        'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',
+        'https://www.googleapis.com/auth/youtubepartner',
       ],
     });
   }
@@ -30,6 +32,8 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
     done: VerifyCallback,
   ): Promise<any> {
     try {
+      console.log('YouTube OAuth scopes concedidos:', profile._json?.scope);
+      
       const photo =
         profile.photos && profile.photos[0]
           ? profile.photos[0].value
