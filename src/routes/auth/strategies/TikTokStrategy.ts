@@ -28,7 +28,7 @@ export class TikTokStrategyAuth extends PassportStrategy(Strategy, 'tiktok') {
     done: Function,
   ) {
     try {
-      const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+      const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       await this.authService.validateSocialMedia(
         {
@@ -39,7 +39,7 @@ export class TikTokStrategyAuth extends PassportStrategy(Strategy, 'tiktok') {
           email: profile.emails?.[0]?.value || null,
           accessToken,
           refreshToken: refreshToken || 'no-refresh-token',
-          tokenExpiresAt, // Add expiration date
+          tokenExpiresAt,
         },
         req,
       );

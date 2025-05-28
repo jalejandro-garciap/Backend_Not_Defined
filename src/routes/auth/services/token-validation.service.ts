@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios';
+import { SocialMedia } from '@prisma/client';
 
 @Injectable()
 export class TokenValidationService {
@@ -11,13 +12,10 @@ export class TokenValidationService {
     return new Date(now.getTime() + expiresInSeconds * 1000);
   }
 
-  isTokenExpiring(expirationDate: Date): boolean {
-    if (!expirationDate) return true;
-    
+  isTokenExpiring(expiresAt: Date): boolean {
     const now = new Date();
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes buffer
-    
-    return expirationDate <= fiveMinutesFromNow;
+    const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+    return expiresAt <= thirtyMinutesFromNow;
   }
 
   async getTokenExpirationFromPlatform(
@@ -124,69 +122,157 @@ export class TokenValidationService {
     });
   }
 
-  async getExpiredTokens(): Promise<any[]> {
+  async getExpiredTokens(): Promise<SocialMedia[]> {
     const now = new Date();
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-
-    return await this.prisma.socialMedia.findMany({
+    return this.prisma.socialMedia.findMany({
       where: {
-        OR: [
-          { token_expires_at: null },
-          { token_expires_at: { lte: fiveMinutesFromNow } },
-        ],
-        enabled: true,
+        token_expires_at: {
+          lte: now,
+        },
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-          },
-        },
+        user: true,
       },
     });
   }
+
   async validateAndUpdateTokenExpiration(socialMediaId: string): Promise<{
-    isValid: boolean;
-    expirationDate?: Date;
-    needsRefresh: boolean;
+    valid: boolean;
+    message: string;
+    expiresAt?: Date;
   }> {
     const socialMedia = await this.prisma.socialMedia.findUnique({
       where: { id: socialMediaId },
     });
 
     if (!socialMedia) {
-      throw new Error('Social media account not found');
-    }
-
-    if (socialMedia.token_expires_at && !this.isTokenExpiring(socialMedia.token_expires_at)) {
       return {
-        isValid: true,
-        expirationDate: socialMedia.token_expires_at,
-        needsRefresh: false,
+        valid: false,
+        message: 'Social media account not found',
       };
     }
 
-    const expirationDate = await this.getTokenExpirationFromPlatform(
-      socialMedia.social_media_name,
-      socialMedia.access_token,
-    );
+    const isExpiring = socialMedia.token_expires_at
+      ? this.isTokenExpiring(socialMedia.token_expires_at)
+      : true;
 
-    if (!expirationDate || this.isTokenExpiring(expirationDate)) {
+    if (isExpiring) {
+      if (socialMedia.social_media_name === 'youtube' && socialMedia.refresh_token) {
+        try {
+          const refreshResult = await this.refreshYouTubeToken(socialMedia);
+          return refreshResult;
+        } catch (error) {
+          console.error('Error refreshing YouTube token:', error);
+          return {
+            valid: false,
+            message: 'Failed to refresh YouTube token',
+          };
+        }
+      }
+
       return {
-        isValid: false,
-        expirationDate,
-        needsRefresh: true,
+        valid: false,
+        message: 'Token is expired or expiring soon',
+        expiresAt: socialMedia.token_expires_at,
       };
     }
-
-    await this.updateTokenExpiration(socialMediaId, expirationDate);
 
     return {
-      isValid: true,
-      expirationDate,
-      needsRefresh: false,
+      valid: true,
+      message: 'Token is valid',
+      expiresAt: socialMedia.token_expires_at,
     };
+  }
+
+  private async refreshYouTubeToken(socialMedia: SocialMedia): Promise<{
+    valid: boolean;
+    message: string;
+    expiresAt?: Date;
+  }> {
+    const refreshTokenPayload = new URLSearchParams({
+      client_id: process.env.YOUTUBE_CLIENT_ID,
+      client_secret: process.env.YOUTUBE_CLIENT_SECRET,
+      refresh_token: socialMedia.refresh_token,
+      grant_type: 'refresh_token',
+    });
+
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: refreshTokenPayload,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('YouTube token refresh failed:', errorData);
+        return {
+          valid: false,
+          message: 'Failed to refresh YouTube token: ' + response.statusText,
+        };
+      }
+
+      const tokenData = await response.json();
+      
+      const newExpiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000);
+
+      await this.prisma.socialMedia.update({
+        where: { id: socialMedia.id },
+        data: {
+          access_token: tokenData.access_token,
+          token_expires_at: newExpiresAt,
+          ...(tokenData.refresh_token && { refresh_token: tokenData.refresh_token }),
+        },
+      });
+
+      return {
+        valid: true,
+        message: 'YouTube token refreshed successfully',
+        expiresAt: newExpiresAt,
+      };
+
+    } catch (error) {
+      console.error('Error during YouTube token refresh:', error);
+      return {
+        valid: false,
+        message: 'Network error during token refresh',
+      };
+    }
+  }
+
+  async checkTokensForUser(userId: string): Promise<{
+    [platform: string]: {
+      connected: boolean;
+      tokenExpired: boolean;
+      expiresAt?: Date;
+    };
+  }> {
+    const socialMediaAccounts = await this.prisma.socialMedia.findMany({
+      where: { user_id: userId },
+    });
+
+    const result: {
+      [platform: string]: {
+        connected: boolean;
+        tokenExpired: boolean;
+        expiresAt?: Date;
+      };
+    } = {};
+
+    for (const account of socialMediaAccounts) {
+      const isExpiring = account.token_expires_at
+        ? this.isTokenExpiring(account.token_expires_at)
+        : true;
+
+      result[account.social_media_name] = {
+        connected: true,
+        tokenExpired: isExpiring,
+        expiresAt: account.token_expires_at,
+      };
+    }
+
+    return result;
   }
 } 

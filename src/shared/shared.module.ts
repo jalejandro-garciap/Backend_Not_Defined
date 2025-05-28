@@ -1,15 +1,18 @@
-import { Module, Global } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TokenValidationService } from '../routes/auth/services/token-validation.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { TokenSchedulerService } from './services/token-scheduler.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Global()
 @Module({
-  imports: [PrismaModule],
   providers: [
     TokenValidationService,
+    TokenSchedulerService,
+    PrismaService,
   ],
   exports: [
     TokenValidationService,
+    TokenSchedulerService,
   ],
 })
 export class SharedModule {} 

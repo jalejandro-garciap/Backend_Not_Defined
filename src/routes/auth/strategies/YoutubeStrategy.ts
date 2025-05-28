@@ -39,7 +39,7 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
       const email =
         profile.emails && profile.emails[0] ? profile.emails[0].value : null;
 
-      const tokenExpiresAt = new Date(Date.now() + 3600 * 1000);
+      const tokenExpiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour from now
 
       await this.authService.validateSocialMedia(
         {

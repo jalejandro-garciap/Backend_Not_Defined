@@ -20,6 +20,7 @@ import {
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
 import { TokenValidationService } from '../services/token-validation.service';
+import { TokenSchedulerService } from '../../../shared/services/token-scheduler.service';
 import { AuthUser } from 'src/utils/decorators';
 
 @Controller('auth')
@@ -27,6 +28,7 @@ export class AuthController {
   constructor(
     @Inject() private readonly userService: UserService,
     @Inject() private readonly tokenValidationService: TokenValidationService,
+    @Inject() private readonly tokenSchedulerService: TokenSchedulerService,
   ) {}
 
   @Get('login/google')
@@ -134,6 +136,41 @@ export class AuthController {
       tokenExpiresAt: socialMedia.token_expires_at,
       isExpiring,
       needsRefresh: isExpiring,
+    };
+  }
+
+  @Post('tokens/refresh/:socialMediaId')
+  @UseGuards(AuthenticatedGuard)
+  async refreshToken(@Param('socialMediaId') socialMediaId: string) {
+    return this.tokenValidationService.validateAndUpdateTokenExpiration(socialMediaId);
+  }
+
+  @Post('tokens/force-refresh/:userId')
+  @UseGuards(AuthenticatedGuard)
+  async forceRefreshUserTokens(@Param('userId') userId: string) {
+    return this.tokenSchedulerService.forceRefreshUserTokens(userId);
+  }
+
+  @Post('tokens/trigger-scheduler')
+  @UseGuards(AuthenticatedGuard)
+  async triggerTokenScheduler() {
+    // Forzar ejecución manual del cron job
+    await this.tokenSchedulerService.refreshExpiringTokens();
+    return { message: 'Proceso de renovación de tokens ejecutado manualmente' };
+  }
+
+  @Get('tokens/scheduler-status')
+  @UseGuards(AuthenticatedGuard)
+  async getSchedulerStatus() {
+    // Obtener información sobre tokens próximos a expirar
+    const expiringTokens = await this.tokenValidationService.getExpiredTokens();
+    const next45Minutes = new Date(Date.now() + 45 * 60 * 1000);
+    
+    return {
+      totalExpiredTokens: expiringTokens.length,
+      nextSchedulerRun: '30 minutos', // Configurable según el cron
+      lastCheck: new Date().toISOString(),
+      upcomingExpirations: next45Minutes.toISOString(),
     };
   }
 
