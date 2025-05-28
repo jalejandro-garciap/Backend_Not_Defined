@@ -10,11 +10,13 @@ import { ReportModule } from './reports/reports.module';
 import { InstagramModule } from './routes/instagram/instagram.module';
 import { RequestModule } from './routes/request/request.module';
 import { YouTubeModule } from './routes/youtube/youtube.module';
+import { SharedModule } from './shared/shared.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    SharedModule,
     AuthModule,
     UserModule,
     TiktokModule,
