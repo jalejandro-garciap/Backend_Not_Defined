@@ -314,6 +314,7 @@ export class UserService {
         social_media_name: details.social_media_name,
         access_token: details.accessToken,
         refresh_token: details.refreshToken,
+        token_expires_at: details.tokenExpiresAt,
         user: {
           connect: { id: user.id },
         },

@@ -40,6 +40,7 @@ model SocialMedia {
   username          String
   access_token      String
   refresh_token     String
+  token_expires_at  DateTime?
   last_connection   DateTime @default(now())
   enabled           Boolean  @default(true)
   created_at        DateTime @default(now())

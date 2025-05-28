@@ -6,4 +6,5 @@ export type Social = {
   email: string | null;
   accessToken: string;
   refreshToken: string | null;
+  tokenExpiresAt?: Date;
 };

@@ -1,12 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { AuthService } from '../services/auth.service';
 import { Strategy } from 'passport-tiktok-auth';
-import { TiktokProfile } from './profiles/TiktokProfile';
+import { AuthService } from '../services/auth.service';
 
 @Injectable()
-export class TikTokStrategy extends PassportStrategy(Strategy) {
-  constructor(@Inject() private readonly authService: AuthService) {
+export class TikTokStrategyAuth extends PassportStrategy(Strategy, 'tiktok') {
+  constructor(private readonly authService: AuthService) {
     super({
       clientID: process.env.TIKTOK_CLIENT_ID,
       clientSecret: process.env.TIKTOK_CLIENT_SECRET,
@@ -25,30 +24,43 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
     req: any,
     accessToken: string,
     refreshToken: string,
-    profile: TiktokProfile,
+    profile: any,
+    done: Function,
   ) {
-    await this.authService.validateSocialMedia(
-      {
+    try {
+      const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+      await this.authService.validateSocialMedia(
+        {
+          id: profile.id,
+          social_media_name: 'tiktok',
+          username: profile.username || profile.displayName,
+          img: profile.photos?.[0]?.value || 'no-photo',
+          email: profile.emails?.[0]?.value || null,
+          accessToken,
+          refreshToken: refreshToken || 'no-refresh-token',
+          tokenExpiresAt, // Add expiration date
+        },
+        req,
+      );
+
+      if (!req.session.socialConnections) {
+        req.session.socialConnections = {};
+      }
+
+      req.session.socialConnections['tiktok'] = {
         id: profile.id,
-        social_media_name: 'tiktok',
-        username: profile.username,
-        img: profile.profileImage,
-        email: null,
-        accessToken,
-        refreshToken,
-      },
-      req,
-    );
+        username: profile.username || profile.displayName,
+      };
 
-    if (!req.session.socialConnections) {
-      req.session.socialConnections = {};
+      done(null, {
+        provider: 'tiktok',
+        id: profile.id,
+        socialConnection: true,
+      });
+    } catch (err) {
+      console.error('❌ Error en validación de TikTok Strategy:', err);
+      done(err, false);
     }
-
-    req.session.socialConnections['tiktok'] = {
-      id: profile.id,
-      username: profile.username,
-    };
-
-    return { provider: 'tiktok', id: profile.id, socialConnection: true };
   }
 }

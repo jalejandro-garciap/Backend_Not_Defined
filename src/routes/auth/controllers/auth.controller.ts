@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   UseGuards,
+  Post,
 } from '@nestjs/common';
 import { SocialMedia, User } from '@prisma/client';
 import {
@@ -18,11 +19,15 @@ import {
 } from '../guards/AuthGuard';
 import { Request, Response } from 'express';
 import { UserService } from 'src/routes/user/services/user.service';
+import { TokenValidationService } from '../services/token-validation.service';
 import { AuthUser } from 'src/utils/decorators';
 
 @Controller('auth')
 export class AuthController {
-  constructor(@Inject() private readonly userService: UserService) {}
+  constructor(
+    @Inject() private readonly userService: UserService,
+    @Inject() private readonly tokenValidationService: TokenValidationService,
+  ) {}
 
   @Get('login/google')
   @UseGuards(GoogleAuthGuard)
@@ -96,6 +101,40 @@ export class AuthController {
     );
     if (!socialMedia) throw new Error('Social media not found');
     return this.userService.deleteSocialMedia(socialMedia.id);
+  }
+
+  @Get('tokens/expired')
+  @UseGuards(AuthenticatedGuard)
+  async getExpiredTokens() {
+    return this.tokenValidationService.getExpiredTokens();
+  }
+
+  @Post('tokens/validate/:socialMediaId')
+  @UseGuards(AuthenticatedGuard)
+  async validateToken(@Param('socialMediaId') socialMediaId: string) {
+    return this.tokenValidationService.validateAndUpdateTokenExpiration(socialMediaId);
+  }
+
+  @Get('tokens/check/:socialMediaId')
+  @UseGuards(AuthenticatedGuard)
+  async checkTokenExpiration(@Param('socialMediaId') socialMediaId: string) {
+    const socialMedia = await this.userService.getSocialMediaById(socialMediaId);
+    if (!socialMedia) {
+      throw new Error('Social media account not found');
+    }
+
+    const isExpiring = socialMedia.token_expires_at
+      ? this.tokenValidationService.isTokenExpiring(socialMedia.token_expires_at)
+      : true;
+
+    return {
+      id: socialMedia.id,
+      platform: socialMedia.social_media_name,
+      username: socialMedia.username,
+      tokenExpiresAt: socialMedia.token_expires_at,
+      isExpiring,
+      needsRefresh: isExpiring,
+    };
   }
 
   @Delete('logout')
