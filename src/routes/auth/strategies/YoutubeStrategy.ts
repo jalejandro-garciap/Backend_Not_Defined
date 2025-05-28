@@ -39,7 +39,7 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
       const email =
         profile.emails && profile.emails[0] ? profile.emails[0].value : null;
 
-      const user = await this.authService.validateSocialMedia(
+      await this.authService.validateSocialMedia(
         {
           id: profile.id,
           social_media_name: 'youtube',
@@ -51,7 +51,21 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
         },
         req,
       );
-      done(null, user);
+
+      if (!req.session.socialConnections) {
+        req.session.socialConnections = {};
+      }
+
+      req.session.socialConnections['youtube'] = {
+        id: profile.id,
+        username: profile.displayName,
+      };
+
+      done(null, {
+        provider: 'youtube',
+        id: profile.id,
+        socialConnection: true,
+      });
     } catch (err) {
       console.error('❌ Error en validación de Youtube Strategy:', err);
       done(err, false);
