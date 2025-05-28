@@ -8,6 +8,12 @@ import * as passport from 'passport';
 import { PrismaClient } from '@prisma/client';
 import { PrismaSessionStore } from '@quixo3/prisma-session-store';
 
+// Polyfill para crypto.randomUUID si no está disponible
+if (!globalThis.crypto) {
+  const { webcrypto } = require('crypto');
+  globalThis.crypto = webcrypto;
+}
+
 async function bootstrap() {
   // const httpsOptions = {
   //   key: fs.readFileSync('./src/key.pem'),
@@ -47,7 +53,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['http://localhost:5173', process.env.FRONTEND_URL],
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   });
   app.use(passport.initialize());
@@ -71,6 +77,6 @@ async function bootstrap() {
     next();
   });
 
-  await app.listen(4000);
+  await app.listen(process.env.PORT || 3001);
 }
 bootstrap();
