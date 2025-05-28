@@ -40,8 +40,16 @@ export class AuthService {
           username: profile.username,
           img: profile.img,
           email: profile.email,
+          tokenExpiresAt: profile.tokenExpiresAt,
         },
         sessionId,
+      );
+    } else {
+      return this.userService.updateSocialMediaTokens(
+        social_media.id,
+        profile.accessToken,
+        profile.refreshToken,
+        profile.tokenExpiresAt
       );
     }
 

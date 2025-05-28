@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   Res,
+  Inject,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
 import { AuthUser, Roles } from '../../../utils/decorators';
@@ -19,6 +20,7 @@ import { User, SocialMedia } from '@prisma/client';
 import { MultiUserReportService } from 'src/reports/services/multi-user-report.service';
 import { ReportFormat } from 'src/reports/interfaces/report-data.interfaces';
 import { Response } from 'express';
+import { TokenValidationService } from 'src/routes/auth/services/token-validation.service';
 
 @Controller('manager')
 @UseGuards(RolGuard)
@@ -28,6 +30,7 @@ export class ManagerController {
     private readonly userService: UserService,
     private readonly requestService: RequestService,
     private readonly multiUserReportService: MultiUserReportService,
+    @Inject() private readonly tokenValidationService: TokenValidationService,
   ) {}
 
   @Get('agencies')
@@ -43,6 +46,66 @@ export class ManagerController {
     @Param('agencyId') agencyId: string,
   ) {
     return this.userService.getAgencyStreamers(agencyId);
+  }
+
+  @Get('agency-streamers-tokens/:agencyId')
+  @Roles('MANAGER')
+  async getAgencyStreamersTokens(
+    @AuthUser() user: User & { social_medias: SocialMedia[] },
+    @Param('agencyId') agencyId: string,
+  ) {
+    const streamers = await this.userService.getAgencyStreamersWithSocialMedia(agencyId);
+    
+    const streamersWithTokenStatus = await Promise.all(
+      streamers.map(async (streamer) => {
+        const socialMediasWithStatus = await Promise.all(
+          streamer.socialMedias.map(async (sm) => {
+            try {
+              const isExpiring = sm.token_expires_at
+                ? this.tokenValidationService.isTokenExpiring(sm.token_expires_at)
+                : true;
+
+              return {
+                id: sm.id,
+                platform: sm.social_media_name,
+                username: sm.username,
+                tokenStatus: {
+                  id: sm.id,
+                  platform: sm.social_media_name,
+                  username: sm.username,
+                  tokenExpiresAt: sm.token_expires_at,
+                  isExpiring,
+                  needsRefresh: isExpiring,
+                },
+              };
+            } catch (error) {
+              console.error(`Error checking token for ${sm.id}:`, error);
+              return {
+                id: sm.id,
+                platform: sm.social_media_name,
+                username: sm.username,
+                tokenStatus: {
+                  id: sm.id,
+                  platform: sm.social_media_name,
+                  username: sm.username,
+                  tokenExpiresAt: sm.token_expires_at,
+                  isExpiring: true,
+                  needsRefresh: true,
+                },
+              };
+            }
+          })
+        );
+
+        return {
+          streamerId: streamer.id,
+          streamerName: streamer.name,
+          socialMedias: socialMediasWithStatus,
+        };
+      })
+    );
+
+    return streamersWithTokenStatus;
   }
 
   @Get('agency-pending-streamers/:agencyId')

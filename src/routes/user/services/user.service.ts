@@ -196,6 +196,48 @@ export class UserService {
     );
   }
 
+  async getAgencyStreamersWithSocialMedia(agencyId: string) {
+    const sponsor = await this.prisma.sponsor.findUnique({
+      where: {
+        id: agencyId,
+      },
+      include: {
+        streamers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                profile_img: true,
+                social_medias: {
+                  select: {
+                    id: true,
+                    social_media_name: true,
+                    username: true,
+                    token_expires_at: true,
+                    enabled: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return (
+      sponsor?.streamers.map((streamer) => {
+        const streamerData = streamer.user;
+        return {
+          id: streamerData.id,
+          name: streamerData.username,
+          imageUrl: streamerData.profile_img,
+          socialMedias: streamerData.social_medias,
+        };
+      }) || []
+    );
+  }
+
   async searchStreamer(agencyId: string, query: string) {
     const agency = await this.prisma.sponsor.findUnique({
       where: {
@@ -318,6 +360,26 @@ export class UserService {
         user: {
           connect: { id: user.id },
         },
+      },
+    });
+  }
+
+  async updateSocialMediaTokens(
+    socialMediaId: string,
+    accessToken: string,
+    refreshToken: string | null,
+    tokenExpiresAt?: Date
+  ) {
+    return this.prisma.socialMedia.update({
+      where: {
+        id: socialMediaId,
+      },
+      data: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_expires_at: tokenExpiresAt,
+        last_connection: new Date(),
+        enabled: true,
       },
     });
   }
