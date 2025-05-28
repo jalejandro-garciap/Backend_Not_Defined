@@ -7,6 +7,7 @@ import { UserModule } from './routes/user/user.module';
 import { ReportModule } from './reports/reports.module';
 import { YouTubeModule } from './routes/youtube/youtube.module';
 import { SharedModule } from './shared/shared.module';
+import { HealthModule } from './routes/health/health.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { SharedModule } from './shared/shared.module';
     ScheduleModule.forRoot(), // Habilita los cron jobs
     PrismaModule,
     SharedModule,
+    HealthModule,
     AuthModule,
     UserModule,
     ReportModule,

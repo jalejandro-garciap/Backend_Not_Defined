@@ -6,16 +6,33 @@ import { PrismaService } from '../../prisma/prisma.service';
 @Injectable()
 export class TokenSchedulerService {
   private readonly logger = new Logger(TokenSchedulerService.name);
+  private isProcessing = false;
+  private lastRunTime: Date | null = null;
+  private lastRunResults: any = null;
 
   constructor(
     private readonly tokenValidationService: TokenValidationService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    this.logger.log('🔧 TokenSchedulerService iniciado');
+    this.logger.log(`📅 Programado para ejecutar cada 30 minutos`);
+    this.logger.log(`🧹 Limpieza programada diariamente a las 2:00 AM`);
+  }
 
   // Ejecutar cada 30 minutos
   @Cron(CronExpression.EVERY_30_MINUTES)
   async refreshExpiringTokens() {
+    if (this.isProcessing) {
+      this.logger.warn('⚠️ Proceso anterior aún en ejecución, saltando esta vez');
+      return;
+    }
+
+    this.isProcessing = true;
+    this.lastRunTime = new Date();
+    
     this.logger.log('🔄 Iniciando proceso de renovación automática de tokens...');
+    this.logger.log(`⏰ Hora de ejecución: ${this.lastRunTime.toISOString()}`);
+    this.logger.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
     
     try {
       // Buscar tokens que expiran en los próximos 45 minutos
@@ -23,6 +40,7 @@ export class TokenSchedulerService {
       
       if (expiringTokens.length === 0) {
         this.logger.log('✅ No hay tokens próximos a expirar');
+        this.lastRunResults = { refreshed: 0, failed: 0, total: 0 };
         return;
       }
 
@@ -30,10 +48,13 @@ export class TokenSchedulerService {
 
       let refreshedCount = 0;
       let failedCount = 0;
+      const results = [];
 
       // Procesar cada token
       for (const socialMedia of expiringTokens) {
         try {
+          this.logger.log(`🔄 Procesando: ${socialMedia.social_media_name} - ${socialMedia.username} (Usuario: ${socialMedia.user?.email || 'N/A'})`);
+          
           const result = await this.refreshTokenForPlatform(socialMedia);
           
           if (result.success) {
@@ -41,11 +62,13 @@ export class TokenSchedulerService {
             this.logger.log(
               `✅ Token renovado exitosamente: ${socialMedia.social_media_name} - ${socialMedia.username}`
             );
+            results.push({ platform: socialMedia.social_media_name, username: socialMedia.username, success: true });
           } else {
             failedCount++;
             this.logger.warn(
               `⚠️ Falló renovación de token: ${socialMedia.social_media_name} - ${socialMedia.username} - ${result.error}`
             );
+            results.push({ platform: socialMedia.social_media_name, username: socialMedia.username, success: false, error: result.error });
           }
         } catch (error) {
           failedCount++;
@@ -53,15 +76,21 @@ export class TokenSchedulerService {
             `❌ Error procesando token: ${socialMedia.social_media_name} - ${socialMedia.username}`,
             error.stack
           );
+          results.push({ platform: socialMedia.social_media_name, username: socialMedia.username, success: false, error: error.message });
         }
       }
 
+      this.lastRunResults = { refreshed: refreshedCount, failed: failedCount, total: expiringTokens.length, details: results };
+
       this.logger.log(
-        `🎯 Proceso completado: ${refreshedCount} exitosos, ${failedCount} fallidos`
+        `🎯 Proceso completado: ${refreshedCount} exitosos, ${failedCount} fallidos de ${expiringTokens.length} total`
       );
 
     } catch (error) {
       this.logger.error('❌ Error en proceso de renovación automática', error.stack);
+      this.lastRunResults = { error: error.message, timestamp: new Date() };
+    } finally {
+      this.isProcessing = false;
     }
   }
 
@@ -69,6 +98,7 @@ export class TokenSchedulerService {
   @Cron('0 2 * * *')
   async cleanupExpiredTokens() {
     this.logger.log('🧹 Iniciando limpieza de tokens expirados...');
+    this.logger.log(`⏰ Hora de ejecución: ${new Date().toISOString()}`);
     
     try {
       // Buscar tokens expirados hace más de 7 días
@@ -97,6 +127,11 @@ export class TokenSchedulerService {
       }
 
       this.logger.log(`🔍 Encontrados ${expiredTokens.length} tokens expirados para limpiar`);
+
+      // Log de los tokens que se van a limpiar
+      expiredTokens.forEach(token => {
+        this.logger.log(`🗑️ Limpiando: ${token.social_media_name} - ${token.username} (Usuario: ${token.user?.email || 'N/A'})`);
+      });
 
       // Marcar como desconectados (en lugar de eliminar)
       const updateResult = await this.prisma.socialMedia.updateMany({
@@ -379,5 +414,29 @@ export class TokenSchedulerService {
     }
 
     return results;
+  }
+
+  // Getters para el estado del scheduler
+  get isCurrentlyProcessing(): boolean {
+    return this.isProcessing;
+  }
+
+  get lastExecutionTime(): Date | null {
+    return this.lastRunTime;
+  }
+
+  get lastExecutionResults(): any {
+    return this.lastRunResults;
+  }
+
+  // Método para obtener información del estado
+  getSchedulerInfo() {
+    return {
+      isProcessing: this.isProcessing,
+      lastRunTime: this.lastRunTime,
+      lastRunResults: this.lastRunResults,
+      nextRunEstimate: this.isProcessing ? 'En proceso...' : 'Próximos 30 minutos',
+      uptime: process.uptime(),
+    };
   }
 } 
