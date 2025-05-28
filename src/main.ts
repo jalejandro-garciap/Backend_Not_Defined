@@ -8,30 +8,31 @@ import * as passport from 'passport';
 import { PrismaClient } from '@prisma/client';
 import { PrismaSessionStore } from '@quixo3/prisma-session-store';
 
+// TEMPORALMENTE COMENTADO PARA DEBUGGING
 // Polyfill para crypto.randomUUID compatible con Railway y otros entornos
-if (typeof globalThis.crypto === 'undefined' || !globalThis.crypto.randomUUID) {
-  try {
-    const { webcrypto } = require('crypto');
-    if (!globalThis.crypto) {
-      globalThis.crypto = webcrypto;
-    } else if (!globalThis.crypto.randomUUID) {
-      globalThis.crypto.randomUUID = webcrypto.randomUUID.bind(webcrypto);
-    }
-  } catch (error) {
-    // Fallback para entornos que no soportan webcrypto
-    console.warn('webcrypto no disponible, usando fallback para randomUUID');
-    if (!globalThis.crypto) {
-      globalThis.crypto = {} as any;
-    }
-    globalThis.crypto.randomUUID = (): `${string}-${string}-${string}-${string}-${string}` => {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      }) as `${string}-${string}-${string}-${string}-${string}`;
-    };
-  }
-}
+// if (typeof globalThis.crypto === 'undefined' || !globalThis.crypto.randomUUID) {
+//   try {
+//     const { webcrypto } = require('crypto');
+//     if (!globalThis.crypto) {
+//       globalThis.crypto = webcrypto;
+//     } else if (!globalThis.crypto.randomUUID) {
+//       globalThis.crypto.randomUUID = webcrypto.randomUUID.bind(webcrypto);
+//     }
+//   } catch (error) {
+//     // Fallback para entornos que no soportan webcrypto
+//     console.warn('webcrypto no disponible, usando fallback para randomUUID');
+//     if (!globalThis.crypto) {
+//       globalThis.crypto = {} as any;
+//     }
+//     globalThis.crypto.randomUUID = (): `${string}-${string}-${string}-${string}-${string}` => {
+//       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+//         const r = Math.random() * 16 | 0;
+//         const v = c === 'x' ? r : (r & 0x3 | 0x8);
+//         return v.toString(16);
+//       }) as `${string}-${string}-${string}-${string}-${string}`;
+//     };
+//   }
+// }
 
 async function bootstrap() {
   // const httpsOptions = {

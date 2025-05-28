@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
+// import { ScheduleModule } from '@nestjs/schedule'; // TEMPORALMENTE COMENTADO
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './routes/auth/auth.module';
 import { UserModule } from './routes/user/user.module';
@@ -12,7 +12,7 @@ import { HealthModule } from './routes/health/health.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ScheduleModule.forRoot(), // Habilita los cron jobs
+    // ScheduleModule.forRoot(), // TEMPORALMENTE COMENTADO
     PrismaModule,
     SharedModule,
     HealthModule,

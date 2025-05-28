@@ -20,7 +20,7 @@ export class TokenSchedulerService {
   }
 
   // Ejecutar cada 30 minutos
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  // @Cron(CronExpression.EVERY_30_MINUTES) // TEMPORALMENTE COMENTADO
   async refreshExpiringTokens() {
     if (this.isProcessing) {
       this.logger.warn('⚠️ Proceso anterior aún en ejecución, saltando esta vez');
@@ -95,7 +95,7 @@ export class TokenSchedulerService {
   }
 
   // Ejecutar cada día a las 2:00 AM para limpiar tokens completamente expirados
-  @Cron('0 2 * * *')
+  // @Cron('0 2 * * *') // TEMPORALMENTE COMENTADO
   async cleanupExpiredTokens() {
     this.logger.log('🧹 Iniciando limpieza de tokens expirados...');
     this.logger.log(`⏰ Hora de ejecución: ${new Date().toISOString()}`);
