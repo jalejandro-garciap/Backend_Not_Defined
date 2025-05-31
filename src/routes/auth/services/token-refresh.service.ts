@@ -203,24 +203,10 @@ export class TokenRefreshService {
     const now = new Date();
     const expiresAt = new Date(socialMedia.token_expires_at);
 
-    let shouldRefresh = false;
-
-    switch (socialMedia.social_media_name.toLowerCase()) {
-      case 'youtube':
-        const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-        shouldRefresh = expiresAt <= thirtyMinutesFromNow;
-        break;
-      case 'instagram':
-      case 'tiktok':
-      default:
-        const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        shouldRefresh = expiresAt <= oneDayFromNow;
-        break;
-    }
-
-    if (shouldRefresh) {
+    // Simple check: if token has expired, refresh it
+    if (expiresAt <= now) {
       this.logger.log(
-        `Token próximo a expirar para ${socialMedia.social_media_name}. Renovando...`,
+        `Token expirado para ${socialMedia.social_media_name}. Renovando...`,
       );
 
       let result = null;

@@ -392,37 +392,16 @@ export class UserService {
 
   async getExpiringSocialMediaTokens() {
     const now = new Date();
-    
-    const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-    
-    const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+    // Simply find all tokens that have already expired
     return this.prisma.socialMedia.findMany({
       where: {
-        OR: [
-          {
-            social_media_name: 'youtube',
-            token_expires_at: {
-              lte: thirtyMinutesFromNow,
-              gte: now,
-            },
-            access_token: {
-              not: 'EXPIRED_TOKEN',
-            },
-          },
-          {
-            social_media_name: {
-              in: ['instagram', 'tiktok'],
-            },
-            token_expires_at: {
-              lte: oneDayFromNow,
-              gte: now,
-            },
-            access_token: {
-              not: 'EXPIRED_TOKEN',
-            },
-          },
-        ],
+        token_expires_at: {
+          lte: now, // Tokens that have expired (date <= now)
+        },
+        access_token: {
+          not: 'EXPIRED_TOKEN', // Exclude already marked as expired
+        },
       },
       include: {
         user: {
