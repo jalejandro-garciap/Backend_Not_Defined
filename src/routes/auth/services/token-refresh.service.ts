@@ -22,7 +22,6 @@ export class TokenRefreshService {
         `Renovando token de Instagram para social media ID: ${socialMediaId}`,
       );
 
-      // Instagram Basic Display API endpoint para renovar tokens
       const url = 'https://graph.instagram.com/refresh_access_token';
       const params = {
         grant_type: 'ig_refresh_token',
@@ -273,11 +272,12 @@ export class TokenRefreshService {
   private async markSocialMediaAsExpired(socialMediaId: string): Promise<void> {
     try {
       // Set token expiration to past date to force re-authentication
+      // Since access_token and refresh_token are required fields, we'll use placeholder values
       const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day ago
       await this.userService.updateSocialMediaTokens(
         socialMediaId,
-        null, // Clear access token
-        null, // Clear refresh token
+        'EXPIRED_TOKEN', // Use placeholder instead of null
+        'EXPIRED_REFRESH_TOKEN', // Use placeholder instead of null
         pastDate, // Set expiration to past
       );
       this.logger.log(
