@@ -389,4 +389,29 @@ export class UserService {
       data: dataToUpdate,
     });
   }
+
+  async getExpiringSocialMediaTokens() {
+    const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    return this.prisma.socialMedia.findMany({
+      where: {
+        token_expires_at: {
+          lte: oneDayFromNow,
+          gte: new Date(), // Solo tokens que aún no han expirado completamente
+        },
+        access_token: {
+          not: null,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
 }
