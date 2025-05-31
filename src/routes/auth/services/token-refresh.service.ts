@@ -43,11 +43,10 @@ export class TokenRefreshService {
       const { access_token, expires_in } = response.data;
       const expiresAt = new Date(Date.now() + expires_in * 1000);
 
-      // Actualizar el token en la base de datos
       await this.userService.updateSocialMediaTokens(
         socialMediaId,
         access_token,
-        null, // Instagram no proporciona refresh token en la renovación
+        null,
         expiresAt,
       );
 
@@ -179,7 +178,6 @@ export class TokenRefreshService {
       const { access_token, expires_in, refresh_token } = response.data;
       const expiresAt = new Date(Date.now() + expires_in * 1000);
 
-      // Actualizar el token en la base de datos
       await this.userService.updateSocialMediaTokens(
         socialMediaId,
         access_token,
@@ -205,19 +203,16 @@ export class TokenRefreshService {
     const now = new Date();
     const expiresAt = new Date(socialMedia.token_expires_at);
 
-    // Different refresh strategies for different platforms
     let shouldRefresh = false;
 
     switch (socialMedia.social_media_name.toLowerCase()) {
       case 'youtube':
-        // YouTube tokens expire in 1 hour, so refresh when there's 30 minutes left
         const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
         shouldRefresh = expiresAt <= thirtyMinutesFromNow;
         break;
       case 'instagram':
       case 'tiktok':
       default:
-        // For other platforms, refresh when there's 24 hours left
         const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         shouldRefresh = expiresAt <= oneDayFromNow;
         break;
@@ -265,13 +260,11 @@ export class TokenRefreshService {
     this.logger.log('Iniciando renovación masiva de tokens expirados');
 
     try {
-      // Obtener todos los tokens que expiran en las próximas 24 horas
       const expiredSocialMedias =
         await this.userService.getExpiringSocialMediaTokens();
 
       for (const socialMedia of expiredSocialMedias) {
         await this.checkAndRefreshTokenIfNeeded(socialMedia);
-        // Pequeña pausa entre renovaciones para evitar rate limiting
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
@@ -283,17 +276,14 @@ export class TokenRefreshService {
     }
   }
 
-  // Helper method to mark social media as expired
   private async markSocialMediaAsExpired(socialMediaId: string): Promise<void> {
     try {
-      // Set token expiration to past date to force re-authentication
-      // Since access_token and refresh_token are required fields, we'll use placeholder values
-      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day ago
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
       await this.userService.updateSocialMediaTokens(
         socialMediaId,
-        'EXPIRED_TOKEN', // Use placeholder instead of null
-        'EXPIRED_REFRESH_TOKEN', // Use placeholder instead of null
-        pastDate, // Set expiration to past
+        'EXPIRED_TOKEN',
+        'EXPIRED_REFRESH_TOKEN',
+        pastDate,
       );
       this.logger.log(
         `Marcado social media ${socialMediaId} como expirado para forzar re-autenticación`,

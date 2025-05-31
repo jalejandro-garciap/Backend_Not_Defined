@@ -392,9 +392,9 @@ export class UserService {
 
   async getExpiringSocialMediaTokens() {
     const now = new Date();
-
+    
     const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-
+    
     const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     return this.prisma.socialMedia.findMany({
@@ -407,19 +407,19 @@ export class UserService {
               gte: now,
             },
             access_token: {
-              not: null,
+              not: 'EXPIRED_TOKEN',
             },
           },
           {
             social_media_name: {
-              not: 'youtube',
+              in: ['instagram', 'tiktok'],
             },
             token_expires_at: {
               lte: oneDayFromNow,
               gte: now,
             },
             access_token: {
-              not: null,
+              not: 'EXPIRED_TOKEN',
             },
           },
         ],
