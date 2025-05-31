@@ -86,10 +86,28 @@ export class TokenRefreshService {
       const response = await firstValueFrom(
         this.httpService.post(url, data).pipe(
           catchError((error) => {
+            this.logger.error('Error renovando token de YouTube:');
+            this.logger.error('Object:');
             this.logger.error(
-              'Error renovando token de YouTube:',
-              error.response?.data || error.message,
+              JSON.stringify(error.response?.data || error.message, null, 2),
             );
+
+            if (error.response?.data?.error === 'unauthorized_client') {
+              this.logger.error(
+                'El refresh token de YouTube ha expirado o es inválido. El usuario debe reconectar su cuenta.',
+              );
+              this.markSocialMediaAsExpired(socialMediaId);
+            } else if (error.response?.data?.error === 'invalid_client') {
+              this.logger.error(
+                'Las credenciales de OAuth de Google son inválidas. Verifica GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET.',
+              );
+            } else if (error.response?.data?.error === 'invalid_grant') {
+              this.logger.error(
+                'El refresh token de YouTube es inválido o ha sido revocado.',
+              );
+              this.markSocialMediaAsExpired(socialMediaId);
+            }
+
             throw error;
           }),
         ),
@@ -98,11 +116,10 @@ export class TokenRefreshService {
       const { access_token, expires_in, refresh_token } = response.data;
       const expiresAt = new Date(Date.now() + expires_in * 1000);
 
-      // Actualizar el token en la base de datos
       await this.userService.updateSocialMediaTokens(
         socialMediaId,
         access_token,
-        refresh_token || refreshToken, // Usar el nuevo refresh token si se proporciona
+        refresh_token || refreshToken,
         expiresAt,
       );
 
@@ -116,6 +133,7 @@ export class TokenRefreshService {
       };
     } catch (error) {
       this.logger.error(`Error renovando token de YouTube:`, error);
+      this.logger.error(JSON.stringify(error, null, 2));
       return null;
     }
   }
@@ -248,6 +266,25 @@ export class TokenRefreshService {
       );
     } catch (error) {
       this.logger.error('Error en renovación masiva:', error);
+    }
+  }
+
+  // Helper method to mark social media as expired
+  private async markSocialMediaAsExpired(socialMediaId: string): Promise<void> {
+    try {
+      // Set token expiration to past date to force re-authentication
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day ago
+      await this.userService.updateSocialMediaTokens(
+        socialMediaId,
+        null, // Clear access token
+        null, // Clear refresh token
+        pastDate, // Set expiration to past
+      );
+      this.logger.log(
+        `Marcado social media ${socialMediaId} como expirado para forzar re-autenticación`,
+      );
+    } catch (error) {
+      this.logger.error(`Error marcando social media como expirado:`, error);
     }
   }
 }
