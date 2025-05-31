@@ -9,7 +9,7 @@ export class TokenRefreshScheduler {
   constructor(private readonly tokenRefreshService: TokenRefreshService) {}
 
   // Para YouTube: cada 30 minutos
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async handleYouTubeTokenRefresh() {
     this.logger.log('Iniciando renovación automática de tokens de YouTube');
     try {
@@ -20,18 +20,6 @@ export class TokenRefreshScheduler {
         'Error en renovación automática de tokens de YouTube:',
         error,
       );
-    }
-  }
-
-  // Para otras plataformas: cada 6 horas
-  @Cron(CronExpression.EVERY_6_HOURS)
-  async handleTokenRefresh() {
-    this.logger.log('Iniciando renovación automática de tokens (6 horas)');
-    try {
-      await this.tokenRefreshService.refreshAllExpiredTokens();
-      this.logger.log('Renovación automática de tokens completada');
-    } catch (error) {
-      this.logger.error('Error en renovación automática de tokens:', error);
     }
   }
 
