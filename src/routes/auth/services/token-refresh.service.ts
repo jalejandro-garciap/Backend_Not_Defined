@@ -76,8 +76,8 @@ export class TokenRefreshService {
 
       const url = 'https://oauth2.googleapis.com/token';
       const data = {
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        client_id: process.env.YOUTUBE_CLIENT_ID,
+        client_secret: process.env.YOUTUBE_CLIENT_SECRET,
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
       };
