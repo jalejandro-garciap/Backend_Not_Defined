@@ -74,11 +74,14 @@ export class AuthController {
 
   @Get('status')
   @UseGuards(AuthenticatedGuard)
-  status(
+  async status(
     @AuthUser() user: User & { social_medias: SocialMedia[] },
     @Res() res: Response,
   ) {
-    res.send(user);
+    const userWithTokenStatus = await this.userService.getUserWithTokenStatus(
+      user.id,
+    );
+    res.send(userWithTokenStatus);
   }
 
   @Get('user/:id')

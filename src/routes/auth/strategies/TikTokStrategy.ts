@@ -27,28 +27,46 @@ export class TikTokStrategy extends PassportStrategy(Strategy) {
     refreshToken: string,
     profile: TiktokProfile,
   ) {
-    await this.authService.validateSocialMedia(
-      {
+    try {
+      let accessTokenExpiresAt: Date | null = null;
+
+      const expiresIn =
+        req.authInfo?.expires_in ||
+        req.query?.expires_in ||
+        req.body?.expires_in ||
+        86400;
+
+      if (expiresIn) {
+        accessTokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+      }
+
+      await this.authService.validateSocialMedia(
+        {
+          id: profile.id,
+          social_media_name: 'tiktok',
+          username: profile.username,
+          img: profile.profileImage,
+          email: null,
+          accessToken,
+          refreshToken,
+          accessTokenExpiresAt,
+        },
+        req,
+      );
+
+      if (!req.session.socialConnections) {
+        req.session.socialConnections = {};
+      }
+
+      req.session.socialConnections['tiktok'] = {
         id: profile.id,
-        social_media_name: 'tiktok',
         username: profile.username,
-        img: profile.profileImage,
-        email: null,
-        accessToken,
-        refreshToken,
-      },
-      req,
-    );
+      };
 
-    if (!req.session.socialConnections) {
-      req.session.socialConnections = {};
+      return { provider: 'tiktok', id: profile.id, socialConnection: true };
+    } catch (err) {
+      console.error('❌ Error en validación de TikTok Strategy:', err);
+      throw err;
     }
-
-    req.session.socialConnections['tiktok'] = {
-      id: profile.id,
-      username: profile.username,
-    };
-
-    return { provider: 'tiktok', id: profile.id, socialConnection: true };
   }
 }

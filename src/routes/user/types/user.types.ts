@@ -1,10 +1,10 @@
 export type UserLogin = {
   id: string;
-  firstname: string; 
+  firstname: string;
   lastname: string;
   username: string;
   img: string;
   email: string;
-  accessToken: string;
-  refreshToken: string;
+  accessToken?: string;
+  refreshToken?: string;
 };

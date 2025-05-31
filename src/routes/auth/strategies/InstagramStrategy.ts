@@ -31,6 +31,18 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
   ) {
     refreshToken = refreshToken || 'no-refresh-token';
     try {
+      let accessTokenExpiresAt: Date | null = null;
+
+      const expiresIn =
+        req.authInfo?.expires_in ||
+        req.query?.expires_in ||
+        req.body?.expires_in ||
+        5184000;
+
+      if (expiresIn) {
+        accessTokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+      }
+
       await this.authService.validateSocialMedia(
         {
           id: profile.id,
@@ -40,6 +52,7 @@ export class InstagramStrategy extends PassportStrategy(Strategy, 'instagram') {
           email: null,
           accessToken,
           refreshToken,
+          accessTokenExpiresAt,
         },
         req,
       );

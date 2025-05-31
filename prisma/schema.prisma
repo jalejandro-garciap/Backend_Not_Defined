@@ -34,16 +34,17 @@ model User {
 }
 
 model SocialMedia {
-  id                String   @id @default(cuid())
-  user_id           String
-  social_media_name String
-  username          String
-  access_token      String
-  refresh_token     String
-  last_connection   DateTime @default(now())
-  enabled           Boolean  @default(true)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id                      String    @id @default(cuid())
+  user_id                 String
+  social_media_name       String
+  username                String
+  access_token            String
+  refresh_token           String
+  token_expires_at        DateTime?
+  last_connection         DateTime  @default(now())
+  enabled                 Boolean   @default(true)
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
 
   user User @relation(fields: [user_id], references: [id])
 }
@@ -56,14 +57,14 @@ model Session {
 }
 
 model Sponsor {
-  id              String              @id @default(cuid())
-  name            String
-  description     String
-  managers        ManagerOnSponsor[]
-  streamers       StreamerOnSponsor[]
-  created_at      DateTime            @default(now())
-  active          Boolean             @default(true)
-  senders         Request[]
+  id          String              @id @default(cuid())
+  name        String
+  description String
+  managers    ManagerOnSponsor[]
+  streamers   StreamerOnSponsor[]
+  created_at  DateTime            @default(now())
+  active      Boolean             @default(true)
+  senders     Request[]
 }
 
 model Request {

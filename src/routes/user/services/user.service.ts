@@ -47,6 +47,38 @@ export class UserService {
     });
   }
 
+  async getUserWithTokenStatus(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        social_medias: true,
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const socialMediasWithStatus = user.social_medias.map((socialMedia) => {
+      const now = new Date();
+      const isTokenExpired = socialMedia.token_expires_at
+        ? socialMedia.token_expires_at < now
+        : false;
+
+      return {
+        ...socialMedia,
+        isTokenExpired,
+      };
+    });
+
+    return {
+      ...user,
+      social_medias: socialMediasWithStatus,
+    };
+  }
+
   async getUserByMail(email: string) {
     return this.prisma.user.findUnique({
       where: {
@@ -166,6 +198,7 @@ export class UserService {
                   select: {
                     social_media_name: true,
                     username: true,
+                    token_expires_at: true,
                   },
                 },
               },
@@ -178,12 +211,25 @@ export class UserService {
     return (
       sponsor?.streamers.map((streamer) => {
         const streamerData = streamer.user;
+        const now = new Date();
+
         const connectedSocials = streamer.user.social_medias.reduce(
           (acc, social) => {
-            acc[social.social_media_name] = true;
+            const isExpired = social.token_expires_at
+              ? social.token_expires_at < now
+              : false;
+
+            acc[social.social_media_name] = {
+              connected: true,
+              isTokenExpired: isExpired,
+              username: social.username,
+            };
             return acc;
           },
-          {} as Record<string, boolean>,
+          {} as Record<
+            string,
+            { connected: boolean; isTokenExpired: boolean; username: string }
+          >,
         );
 
         return {
@@ -314,10 +360,33 @@ export class UserService {
         social_media_name: details.social_media_name,
         access_token: details.accessToken,
         refresh_token: details.refreshToken,
+        token_expires_at: details.accessTokenExpiresAt,
         user: {
           connect: { id: user.id },
         },
       },
+    });
+  }
+
+  async updateSocialMediaTokens(
+    socialMediaId: string,
+    accessToken: string,
+    refreshToken: string | null,
+    accessTokenExpiresAt: Date | null,
+  ) {
+    const dataToUpdate: any = {
+      access_token: accessToken,
+      token_expires_at: accessTokenExpiresAt,
+      last_connection: new Date(),
+    };
+    if (refreshToken) {
+      dataToUpdate.refresh_token = refreshToken;
+    }
+    return this.prisma.socialMedia.update({
+      where: {
+        id: socialMediaId,
+      },
+      data: dataToUpdate,
     });
   }
 }

@@ -27,24 +27,30 @@ export class AuthService {
   async validateSocialMedia(profile: any, req: Request): Promise<any> {
     const social_media = await this.userService.getSocialMediaById(profile.id);
 
-    if (!social_media) {
-      const sessionCookie = req.cookies['connect.sid'];
-      const sessionId = sessionCookie.split('.')[0].slice(2);
+     if (!social_media) {
+       const sessionCookie = req.cookies['connect.sid'];
+       const sessionId = sessionCookie?.split('.')[0].slice(2);
 
-      return this.userService.addSocialMediaToUser(
-        {
-          id: profile.id,
-          social_media_name: profile.social_media_name,
-          accessToken: profile.accessToken,
-          refreshToken: profile.refreshToken,
-          username: profile.username,
-          img: profile.img,
-          email: profile.email,
-        },
-        sessionId,
-      );
-    }
-
-    return social_media;
+       return this.userService.addSocialMediaToUser(
+         {
+           id: profile.id,
+           social_media_name: profile.social_media_name,
+           accessToken: profile.accessToken,
+           refreshToken: profile.refreshToken,
+           accessTokenExpiresAt: profile.accessTokenExpiresAt,
+           username: profile.username,
+           img: profile.img,
+           email: profile.email,
+         },
+         sessionId,
+       );
+     } else {
+       return this.userService.updateSocialMediaTokens(
+         social_media.id,
+         profile.accessToken,
+         profile.refreshToken,
+         profile.accessTokenExpiresAt,
+       );
+     }
   }
 }

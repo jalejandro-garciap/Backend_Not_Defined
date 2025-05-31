@@ -39,6 +39,18 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
       const email =
         profile.emails && profile.emails[0] ? profile.emails[0].value : null;
 
+      let accessTokenExpiresAt: Date | null = null;
+
+      const expiresIn =
+        req.authInfo?.expires_in ||
+        req.query?.expires_in ||
+        req.body?.expires_in ||
+        3600;
+
+      if (expiresIn) {
+        accessTokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+      }
+
       await this.authService.validateSocialMedia(
         {
           id: profile.id,
@@ -48,6 +60,7 @@ export class YoutubeStrategy extends PassportStrategy(YoutubeV3Strategy) {
           email,
           accessToken,
           refreshToken,
+          accessTokenExpiresAt,
         },
         req,
       );
