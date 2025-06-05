@@ -7,6 +7,74 @@ import { YoutubeVideoMetrics } from '../utils/interfaces/youtube_metrics.interfa
 export class YoutubeService {
   constructor(private readonly httpService: HttpService) {}
 
+  async getUploadsPlaylistId(
+    accessToken: string,
+    channelId: string,
+  ): Promise<string> {
+    const url = 'https://www.googleapis.com/youtube/v3/channels';
+    const params = {
+      part: 'contentDetails',
+      id: channelId,
+    };
+
+    const { data } = await firstValueFrom(
+      this.httpService
+        .get(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
+        })
+        .pipe(
+          catchError((err) => {
+            console.error(
+              'Error fetching channel contentDetails:',
+              err.response?.data || err,
+            );
+            throw err.response?.data || err;
+          }),
+        ),
+    );
+    if (data.items && data.items.length > 0) {
+      return data.items[0].contentDetails.relatedPlaylists.uploads;
+    }
+    throw new Error('No se encontró el uploadsPlaylistId');
+  }
+
+  async getVideosFromUploadsPlaylist(
+    accessToken: string,
+    uploadsPlaylistId: string,
+    pageToken?: string,
+  ): Promise<{ items: any[]; nextPageToken?: string }> {
+    const url = 'https://www.googleapis.com/youtube/v3/playlistItems';
+    const params: any = {
+      part: 'snippet',
+      playlistId: uploadsPlaylistId,
+      maxResults: 50, // te devuelve hasta 50 videos por página
+      fields:
+        'nextPageToken,items(snippet(publishedAt,title,resourceId/videoId))',
+    };
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+
+    const { data } = await firstValueFrom(
+      this.httpService
+        .get(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
+        })
+        .pipe(
+          catchError((error) => {
+            console.error(
+              'Error fetching playlist items:',
+              error.response?.data || error,
+            );
+            throw error.response?.data || error;
+          }),
+        ),
+    );
+    return { items: data.items, nextPageToken: data.nextPageToken };
+  }
+
   // 1. Obtiene la lista de videos del canal autenticado usando channelId y fechas
   async getYoutubeVideos(
     accessToken: string,
@@ -123,7 +191,8 @@ export class YoutubeService {
       ids: 'channel==MINE',
       startDate,
       endDate,
-      metrics: 'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
+      metrics:
+        'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
       dimensions: 'video',
       filters: `video==${videoId}`,
     };
@@ -143,7 +212,7 @@ export class YoutubeService {
           params.startDate = startDateObj.toISOString().split('T')[0];
         }
       }
-      
+
       const { data } = await firstValueFrom(
         this.httpService
           .get(url, {
@@ -152,7 +221,10 @@ export class YoutubeService {
           })
           .pipe(
             catchError((error) => {
-              console.error('❌ Error fetching video analytics:', error.response?.data || error);
+              console.error(
+                '❌ Error fetching video analytics:',
+                error.response?.data || error,
+              );
               // En lugar de lanzar una excepción, devolvemos un Observable que emitirá un objeto vacío
               return throwError(() => ({ data: { rows: [] } }));
             }),
@@ -160,14 +232,15 @@ export class YoutubeService {
       );
 
       // Si no hay datos para ese video, intentar una consulta general del canal
-      if (!data || !data.rows || data.rows.length === 0) {        
+      if (!data || !data.rows || data.rows.length === 0) {
         const channelParams = {
           ids: 'channel==MINE',
           startDate: params.startDate,
           endDate: params.endDate,
-          metrics: 'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
+          metrics:
+            'views,comments,likes,dislikes,estimatedMinutesWatched,averageViewDuration,shares,subscribersGained,subscribersLost',
         };
-        
+
         try {
           const channelData = await firstValueFrom(
             this.httpService
@@ -177,13 +250,21 @@ export class YoutubeService {
               })
               .pipe(
                 catchError((error) => {
-                  console.error('❌ Error fetching channel analytics:', error.response?.data || error);
+                  console.error(
+                    '❌ Error fetching channel analytics:',
+                    error.response?.data || error,
+                  );
                   return throwError(() => ({ data: { rows: [] } }));
                 }),
               ),
           );
-          
-          if (channelData && channelData.data && channelData.data.rows && channelData.data.rows.length > 0) {
+
+          if (
+            channelData &&
+            channelData.data &&
+            channelData.data.rows &&
+            channelData.data.rows.length > 0
+          ) {
             const analyticsData = {};
             channelData.data.columnHeaders.forEach((header, index) => {
               analyticsData[header.name] = channelData.data.rows[0][index];
@@ -191,9 +272,12 @@ export class YoutubeService {
             return analyticsData;
           }
         } catch (error) {
-          console.error('❌ Error al obtener datos generales del canal:', error);
+          console.error(
+            '❌ Error al obtener datos generales del canal:',
+            error,
+          );
         }
-        
+
         return {};
       }
 
@@ -206,7 +290,7 @@ export class YoutubeService {
 
         return analyticsData;
       }
-      
+
       return {};
     } catch (error) {
       console.error('❌ Failed to get video analytics:', error);
@@ -230,31 +314,61 @@ export class YoutubeService {
     publishedBefore?: string, // Represents dateRange end
     hashtags?: string[], // Add hashtags parameter
   ): Promise<YoutubeVideoMetrics[]> {
-    // 1. Obtener el channelId del usuario autenticado
+    // 1. Obtener channelId
     const channelData = await this.getChannelData(accessToken, '');
     if (!channelData || !channelData.id) {
       throw new Error('No se pudo obtener el channelId del usuario');
     }
     const channelId = channelData.id;
 
-    let allVideos: any[] = [];
+    // 2. Obtener uploadsPlaylistId
+    const uploadsPlaylistId = await this.getUploadsPlaylistId(
+      accessToken,
+      channelId,
+    );
+
+    // 3. Iterar sobre la playlist de subidas (paginada, maxResults=50)
+    let allVideos: { videoId: string; publishedAt: string; title: string }[] =
+      [];
     let pageToken: string | undefined = undefined;
     do {
-      const { items, nextPageToken } = await this.getYoutubeVideos(
+      const { items, nextPageToken } = await this.getVideosFromUploadsPlaylist(
         accessToken,
-        channelId,
+        uploadsPlaylistId,
         pageToken,
-        publishedAfter, // Pass date range filters
-        publishedBefore,
       );
-      allVideos = allVideos.concat(items);
+
+      // Filtrar por fechas si se proporcionan
+      for (const item of items) {
+        const videoId = item.snippet.resourceId.videoId;
+        const publishedAt = item.snippet.publishedAt;
+        if (
+          publishedAfter &&
+          new Date(publishedAt) < new Date(publishedAfter)
+        ) {
+          // Si este video es anterior a publishedAfter, podemos terminar el bucle (los siguientes serán más antiguos aún)
+          pageToken = undefined;
+          break;
+        }
+        if (
+          publishedBefore &&
+          new Date(publishedAt) > new Date(publishedBefore)
+        ) {
+          // Si este video es más reciente que publishedBefore, simplemente lo saltamos
+          continue;
+        }
+        allVideos.push({ videoId, publishedAt, title: item.snippet.title });
+      }
+
       pageToken = nextPageToken;
+      // Si ya salimos por el filtro publishedAfter, pageToken habrá quedado undefined
     } while (pageToken);
 
-    const videoIds = allVideos.map((video) => video.id.videoId).filter(Boolean);
-    if (!videoIds.length) return [];
+    // 4. Si no hay videos, salimos
+    const videoIds = allVideos.map((v) => v.videoId);
+    if (videoIds.length === 0) return [];
 
-    // Procesar los IDs en lotes de 50
+    // 5. Obtener detalles (snippet + statistics) en lotes de 50
     const videosDetails: any[] = [];
     for (let i = 0; i < videoIds.length; i += 50) {
       const batchIds = videoIds.slice(i, i + 50);
@@ -262,40 +376,46 @@ export class YoutubeService {
       videosDetails.push(...details);
     }
 
-    // d) Obtener datos del canal (para el número de suscriptores)
-    const subscribersCount = channelData?.statistics?.subscriberCount
+    // 6. Obtener número de suscriptores (opcional, ya lo hiciste con getChannelData)
+    const subscribersCount = channelData.statistics?.subscriberCount
       ? Number(channelData.statistics.subscriberCount)
       : 0;
 
     // Define the date range for analytics
-    const startDate = publishedAfter 
-      ? new Date(publishedAfter).toISOString().split('T')[0] 
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Default to last 30 days
-    
-    const endDate = publishedBefore 
-      ? new Date(publishedBefore).toISOString().split('T')[0] 
+    const startDate = publishedAfter
+      ? new Date(publishedAfter).toISOString().split('T')[0]
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0]; // Default to last 30 days
+
+    const endDate = publishedBefore
+      ? new Date(publishedBefore).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0]; // Today
 
     // Verificar que las fechas no estén en el futuro
     const now = new Date();
     const endDateObj = new Date(endDate);
     const startDateObj = new Date(startDate);
-    
-    const adjustedEndDate = endDateObj > now ? now.toISOString().split('T')[0] : endDate;
-    const adjustedStartDate = startDateObj > now ? 
-      new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
-      startDate;
-      
+
+    const adjustedEndDate =
+      endDateObj > now ? now.toISOString().split('T')[0] : endDate;
+    const adjustedStartDate =
+      startDateObj > now
+        ? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0]
+        : startDate;
+
     // e) Consolidar la información en base a la interfaz YoutubeVideoMetrics
     let metrics: YoutubeVideoMetrics[] = [];
-    
+
     // Flag para verificar si tenemos acceso a Analytics
     let analyticsAccessible = true;
-    
+
     for (const video of videosDetails) {
       const snippet = video.snippet;
       const statistics = video.statistics;
-      
+
       // Get analytics data for this video - Si es el primer video y falla, no intentamos con los demás
       let analyticsData: {
         shares?: number;
@@ -308,7 +428,7 @@ export class YoutubeService {
         subscribersGained?: number;
         subscribersLost?: number;
       } = {};
-      
+
       if (analyticsAccessible) {
         try {
           analyticsData = await this.getVideoAnalytics(
@@ -317,7 +437,7 @@ export class YoutubeService {
             adjustedStartDate,
             adjustedEndDate,
           );
-          
+
           // Si no hay datos y es el primer video, probablemente no tengamos acceso
           if (Object.keys(analyticsData).length === 0 && metrics.length === 0) {
             analyticsAccessible = false;
@@ -331,7 +451,7 @@ export class YoutubeService {
       const viewCount = Number(statistics?.viewCount) || 0;
       const likes = Number(statistics?.likeCount) || 0;
       const comments = Number(statistics?.commentCount) || 0;
-      
+
       // Use analytics data when available, fallback to approximations
       const shares = analyticsData.shares || 0;
       const saved = 0; // Not available
@@ -366,9 +486,10 @@ export class YoutubeService {
           ? new Date(snippet.publishedAt)
           : new Date(),
         tags: snippet?.tags || [],
-        
+
         // YouTube Analytics API fields
-        annotationClickThroughRate: analyticsData.annotationClickThroughRate || null,
+        annotationClickThroughRate:
+          analyticsData.annotationClickThroughRate || null,
         annotationCloseRate: analyticsData.annotationCloseRate || null,
         averageViewDuration: analyticsData.averageViewDuration || null,
         dislikes: analyticsData.dislikes || null,
@@ -376,7 +497,7 @@ export class YoutubeService {
         estimatedRevenue: analyticsData.estimatedRevenue || null,
         subscribersGained: analyticsData.subscribersGained || null,
         subscribersLost: analyticsData.subscribersLost || null,
-        viewerPercentage: null // Ya no obtenemos este dato
+        viewerPercentage: null, // Ya no obtenemos este dato
       });
     }
 
