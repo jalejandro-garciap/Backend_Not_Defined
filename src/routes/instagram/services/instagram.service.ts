@@ -11,7 +11,7 @@ export class InstagramService {
     accessToken: string,
     metrics: string[],
   ): Promise<any[]> {
-    const url = `https://graph.instagram.com/v15.0/${mediaId}/insights`;
+    const url = `https://graph.instagram.com/${mediaId}/insights`;
     const params = {
       metric: metrics.join(','),
       access_token: accessToken,
@@ -29,12 +29,12 @@ export class InstagramService {
 
   async getMediaInsights(mediaId: string, accessToken: string): Promise<any[]> {
     const fullMetrics = [
-      'impressions',
-      'reach',
-      'engagement',
+      'likes',
+      'comments',
       'saved',
-      'video_views',               // solo si tu media es video
-      'carousel_album_engagement', // para carruseles
+      'shares',
+      'reach',
+      'impressions',
     ];
 
     try {
